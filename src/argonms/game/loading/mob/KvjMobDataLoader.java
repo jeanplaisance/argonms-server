@@ -26,6 +26,13 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import argonms.common.util.DatabaseManager;
+import argonms.common.util.DatabaseManager.DatabaseType;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 /**
  *
  * @author GoldenKevin
@@ -78,7 +85,9 @@ public class KvjMobDataLoader extends MobDataLoader {
 			File f = new File(new StringBuilder(dataPath).append("Mob.wz").append(File.separator).append(id).append(".img.kvj").toString());
 			if (f.exists()) {
 				stats = new MobStats(mobid);
-				doWork(new LittleEndianByteArrayReader(f), stats);
+				try{
+					doWork(new LittleEndianByteArrayReader(f), stats);
+				}catch(SQLException e) {System.out.println("[Database Drops] Houston, we had a problem.");}
 			}
 		} catch (IOException e) {
 			LOG.log(Level.WARNING, "Could not read KVJ data file for mob " + mobid, e);
@@ -89,16 +98,18 @@ public class KvjMobDataLoader extends MobDataLoader {
 	@Override
 	public boolean loadAll() {
 		try {
+
 			File root = new File(dataPath + "Mob.wz");
 			for (String kvj : root.list()) {
 				int mobid = Integer.parseInt(kvj.substring(0, kvj.lastIndexOf(".img.kvj")));
 				MobStats stats = new MobStats(mobid);
-				doWork(new LittleEndianByteArrayReader(new File(root.getAbsolutePath() + File.separatorChar + kvj)), stats);
-				//InputStream is = new BufferedInputStream(new FileInputStream(prefFolder.getAbsolutePath() + File.separatorChar + kvj));
-				//doWork(new LittleEndianStreamReader(is), stats);
-				//is.close();
+				try {
+					doWork(new LittleEndianByteArrayReader(new File(root.getAbsolutePath() + File.separatorChar + kvj)), stats);
+				}catch(SQLException e) {System.out.println("[Database Drops] Houston, we had a problem.");}
 				mobStats.put(Integer.valueOf(mobid), stats);
+
 			}
+
 			return true;
 		} catch (IOException ex) {
 			LOG.log(Level.WARNING, "Could not load all mob data from KVJ files.", ex);
@@ -115,7 +126,23 @@ public class KvjMobDataLoader extends MobDataLoader {
 		return f.exists();
 	}
 
-	private void doWork(LittleEndianReader reader, MobStats stats) {
+	private void doWork(LittleEndianReader reader, MobStats stats) throws SQLException {
+		boolean db = false;
+		//Gets item drops from database if available
+		Connection con = DatabaseManager.getConnection(DatabaseType.STATE);
+		PreparedStatement ps = con.prepareStatement("SELECT `itemid`, `chance`, `min_amount`, `max_amount` FROM `monsterdrops` WHERE `monsterid` = ?");
+		ps.setInt(1, stats.getMobId());
+		ResultSet rs = ps.executeQuery();
+		if(rs.next()){
+			db = true;
+			rs.beforeFirst();
+			while(rs.next()){
+				stats.addItemDrop(rs.getInt("itemid"), rs.getInt("chance"), (short) rs.getInt("min_amount"), (short) rs.getInt("max_amount"));
+			}
+		}
+		//InputStream is = new BufferedInputStream(new FileInputStream(prefFolder.getAbsolutePath() + File.separatorChar + kvj));
+		//doWork(new LittleEndianStreamReader(is), stats);
+		//is.close();
 		for (byte now = reader.readByte(); now != -1; now = reader.readByte()) {
 			switch (now) {
 				case LEVEL:
@@ -187,11 +214,12 @@ public class KvjMobDataLoader extends MobDataLoader {
 					stats.addDelay(name, delay);
 					break;
 				case DROPS: {
-					System.out.println("This field doesn't exist.")
 					byte amt = reader.readByte();
 					for (int i = amt - 1; i >= 0; --i) {
 						int itemid = reader.readInt();
 						int chance = reader.readInt();
+						//Breaks if the database has already populated drops for this mob, indicated by a non-zero rs row. It needs to read first, however, to advance the stream.
+						if(db){ break; }
 						if (InventoryTools.isArrowForBow(itemid) || InventoryTools.isArrowForCrossBow(itemid))
 							stats.addItemDrop(itemid, chance, (short) 10, (short) 25);
 						else
@@ -219,6 +247,14 @@ public class KvjMobDataLoader extends MobDataLoader {
 					stats.setDropItemPeriod(reader.readByte());
 					break;
 			}
+		}
+
+		//Gets meso drops from database if available
+		ps = con.prepareStatement("SELECT `mesoamount`, `chance` FROM `mesodrops` WHERE `monsterid` = ?");
+		ps.setInt(1, stats.getMobId());
+		rs = ps.executeQuery();
+		if(rs.next()){
+			stats.setMesoDrop(rs.getInt("chance"), (int)(rs.getInt("mesoamount") * 0.8),  (int)(rs.getInt("mesoamount")*1.2));
 		}
 	}
 

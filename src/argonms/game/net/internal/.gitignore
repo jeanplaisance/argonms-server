@@ -1,0 +1,9 @@
+/CenterGamePacketProcessor.class
+/CenterServerSynchronization.class
+/ChannelOrShopSynchronization.class
+/ChannelShopSynchronization.class
+/CrossChannelSynchronization.class
+/CrossProcessCrossChannelSynchronization.class
+/CrossServerSynchronization.class
+/GameCenterInterface.class
+/SameProcessCrossChannelSynchronization.class

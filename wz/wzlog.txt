@@ -6763,7 +6763,7 @@ Character.wz\Weapon\01702201.img done.
 Finished compiling Character.wz!
 --------------------------------------------------------------------------------
 Compiling Map.wz...
-Skipping wz dev\Map.wz\Map\AreaCode.img.xml
+Skipping ..\wz dev\Map.wz\Map\AreaCode.img.xml
 WARNING: Unhandled property delay in portal 4.
 WARNING: Unhandled property hideTooltip in portal 4.
 WARNING: Unhandled property onlyOnce in portal 4.
@@ -10648,4 +10648,4 @@ Map.wz\Map\Map9\990001100.img done.
 Map.wz\Map\Map9\990001101.img done.
 Finished compiling Map.wz!
 --------------------------------------------------------------------------------
-Processing completed in 14560ms!
+Processing completed in 12568ms!

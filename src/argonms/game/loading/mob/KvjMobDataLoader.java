@@ -187,6 +187,7 @@ public class KvjMobDataLoader extends MobDataLoader {
 					stats.addDelay(name, delay);
 					break;
 				case DROPS: {
+					System.out.println("This field doesn't exist.")
 					byte amt = reader.readByte();
 					for (int i = amt - 1; i >= 0; --i) {
 						int itemid = reader.readInt();

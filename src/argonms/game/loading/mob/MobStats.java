@@ -22,10 +22,16 @@ import argonms.common.character.inventory.Equip;
 import argonms.common.character.inventory.InventorySlot;
 import argonms.common.character.inventory.InventorySlot.ItemType;
 import argonms.common.character.inventory.InventoryTools;
+import argonms.common.util.DatabaseManager;
+import argonms.common.util.DatabaseManager.DatabaseType;
 import argonms.common.util.Rng;
 import argonms.game.GameServer;
 import argonms.game.field.Element;
 import argonms.game.field.entity.Mob;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -79,6 +85,15 @@ public class MobStats {
 		this.itemDrops = new ArrayList<ItemDropEntry>();
 		this.removeAfter = -1;
 		this.deathAnimation = Mob.DESTROY_ANIMATION_NORMAL;
+		try {
+			Connection con = DatabaseManager.getConnection(DatabaseType.STATE);
+			PreparedStatement ps = con.prepareStatement("SELECT `mesoamount`, `chance` FROM `mesodrops` WHERE `monsterid` = ?");
+			ps.setInt(1, this.getMobId());
+			ResultSet rs = ps.executeQuery();
+			if(rs.next()){
+				this.mesoDrop = new MesoDropChance(rs.getInt("chance"), (int)(rs.getInt("mesoamount") * 0.8),  (int)(rs.getInt("mesoamount")*1.2));
+			}
+		}catch(SQLException e){}
 	}
 
 	protected void setLevel(short level) {
@@ -330,18 +345,50 @@ public class MobStats {
 		Random generator = Rng.getGenerator();
 		List<InventorySlot> items = new ArrayList<InventorySlot>();
 		int multiplier = GameServer.getVariables().getDropRate();
-		for (ItemDropEntry entry : itemDrops) {
-			if (generator.nextInt(1000000) < ((long) entry.getDropChance() * multiplier)) {
-				InventorySlot item = InventoryTools.makeItemWithId(entry.getItemId());
-				if (item.getType() == ItemType.EQUIP)
-					InventoryTools.randomizeStats((Equip) item);
-				if (entry.getMaxQuantity() != 1)
-					item.setQuantity((short) (generator.nextInt(entry.getMaxQuantity() - entry.getMinQuantity() + 1) + entry.getMinQuantity()));
-				items.add(item);
+
+		try{
+			Connection con = DatabaseManager.getConnection(DatabaseType.STATE);
+			PreparedStatement ps = con.prepareStatement("SELECT `itemid`, `chance` FROM `monsterdrops` WHERE `monsterid` = ?");
+			ps.setInt(1, this.getMobId());
+			ResultSet rs = ps.executeQuery();
+			while(rs.next()){
+				int itemId = rs.getInt("itemid");
+				long chance = 1000000 / rs.getInt("chance");
+				if (generator.nextInt(1000000) < (chance * multiplier)) {
+					InventorySlot item = InventoryTools.makeItemWithId(itemId);
+					if (item.getType() == ItemType.EQUIP)
+						InventoryTools.randomizeStats((Equip) item);
+					items.add(item);
+				}
 			}
+		} catch (SQLException e) {
+			System.out.println("[Database Drops] You dun goofed somehow on that query.");
+		} finally {
+			DatabaseManager.cleanup(DatabaseType.STATE,  null, null,  null);
 		}
+
 		return items;
 	}
+
+	// public List<InventorySlot> getItemsToDrop() {
+	// 	Random generator = Rng.getGenerator();
+	// 	List<InventorySlot> items = new ArrayList<InventorySlot>();
+	// 	int multiplier = GameServer.getVariables().getDropRate();
+
+
+
+	// 	for (ItemDropEntry entry : itemDrops) {
+	// 		if (generator.nextInt(1000000) < ((long) entry.getDropChance() * multiplier)) {
+	// 			InventorySlot item = InventoryTools.makeItemWithId(entry.getItemId());
+	// 			if (item.getType() == ItemType.EQUIP)
+	// 				InventoryTools.randomizeStats((Equip) item);
+	// 			if (entry.getMaxQuantity() != 1)
+	// 				item.setQuantity((short) (generator.nextInt(entry.getMaxQuantity() - entry.getMinQuantity() + 1) + entry.getMinQuantity()));
+	// 			items.add(item);
+	// 		}
+	// 	}
+	// 	return items;
+	// }
 
 	public byte getDropItemPeriod() {
 		return dropItemPeriod;

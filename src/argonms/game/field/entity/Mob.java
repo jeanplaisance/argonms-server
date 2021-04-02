@@ -22,6 +22,7 @@ import argonms.common.character.PlayerStatusEffect;
 import argonms.common.character.inventory.Inventory;
 import argonms.common.character.inventory.InventorySlot;
 import argonms.common.character.inventory.InventoryTools;
+import argonms.common.util.Rng;
 import argonms.common.field.MonsterStatusEffect;
 import argonms.common.loading.StatusEffectsData;
 import argonms.common.loading.StatusEffectsData.MonsterStatusEffectsData;
@@ -54,6 +55,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -152,10 +154,22 @@ public class Mob extends AbstractEntity {
 		for (InventorySlot item : items)
 			combined.add(new ItemDrop(item));
 		int dropMesos = stats.getMesosToDrop();
-		if (dropMesos != 0)
+		if (dropMesos != 0){
 			combined.add(new ItemDrop(dropMesos));
+			combined = getAdditionalMesoDrops(combined, dropMesos, 150000);
+		}
 		Collections.shuffle(combined);
 		return combined;
+	}
+
+	private List<ItemDrop> getAdditionalMesoDrops(List<ItemDrop> combined, int dropMesos, int probability){
+		Random generator = Rng.getGenerator();
+		if (generator.nextInt(1000000) < probability) {
+			combined.add(new ItemDrop((int)(dropMesos * (100 + generator.nextInt(20) - 10)/100)));
+			return getAdditionalMesoDrops(combined, dropMesos, (int)(probability*0.85));
+		} else {
+			return combined;
+		}
 	}
 
 	private void schedulePostDeathAnimationTasks(final int owner, final byte pickupAllow) {

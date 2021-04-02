@@ -1,3081 +1,345 @@
-2011-01-11  GoldenKevin  (revision 1)
-
-	Automatically created /trunk directory. We recommend you to put all your
-	code there
-
-2011-01-22  GoldenKevin  (revision 2)
-
-	* Initial import. Things currently working:
-		* Inter server communications between a central server and remote
-		servers.
-		* Loading of Item.wz, Map.wz, Mob.wz, Reactor.wz, Skill.wz, and
-		String.wz data files in KVJ format. MCDB support soon to come with XML
-		and WZ support planned in the long run.
-		* Game, login, and shop servers can listen and decode packets received
-		from MapleStory clients, but do not process anything yet. There has been
-		a little headway in login server packet handling.
-		* A code stub for a telnet acceptor on the center server. It accepts
-		connections but there are many things that need to be done before I can
-		even think about implementing commands on it.
-	Some more work has to be done on the actual client and server communications
-	frameworks, but once that is done, I will start working on implementing
-	packet handlers in the login server first. A lot of low level code was taken
-	from OdinMS-derived sources in order to speed up development. Thanks guys!
-
-2011-01-22  GoldenKevin  (revision 3)
-
-	* Added AGPLv3 license headers to all Java source files.
-
-2011-01-23  GoldenKevin  (revision 4)
-
-	* Removed "argonms.*.data.dir" for all client listening servers because it
-	is no longer used (Please specify the data directory with the System
-	property "argonms.data.dir")
-	* Added MCDB loading for maps data. Item data is soon to come followed by
-	the rest.
-	* Added error checking for KVJ loaders. When a piece of data doesn't exist,
-	the entry in the caches will be null and the load methods will no longer
-	throw FileNotFoundExceptions.
-	* String data now has to be preloaded on any server that uses it.
-	* Every data cache object now has a protected access modifier for all of
-	their mutator methods and for their constructor, while only their accessor
-	methods have public access. This way, the dynamically loaded data containing
-	these static cache objects cannot modify them for the other dynamic data
-	that use the same cache.
-
-2011-01-23  GoldenKevin  (revision 5)
-
-	* Finished MCDB data loader for items.
-	* Merged WzDatabaseConnection into DatabaseConnection.
-	* Refactored DatabaseConnection to be more efficient I suppose?
-
-2011-01-25  GoldenKevin  (revision 6)
-
-	* Added MCDB data loading for strings.
-	* Please note that a new version of KVJ compiler is released. Please
-	recompile all KVJ files!
-	* I think I forgot all about how ThreadLocal worked when I created those
-	MCDB data loading classes... anyway, the getWzConnection() is called at each
-	method call now instead of being stored as a single instance variable for
-	all threads.
-	* Made constructors of all data loaders to protected and added
-	(instance == null) check for every setInstance method just so nobody
-	"accidentally" creates more than one instance of those singleton classes. I
-	don't mistake you guys as idiots, it's just a safe programming practice.
-	* Added MCDB loading for mobs and skills and enabled loading for strings
-	(a whoops from the last revision).
-	* All data loaders have an canLoad() method now to check if the data for an
-	object exists (all except for String apparently). Note that this is not an
-	exists() method, i.e. MCDB skills will return true even if the skill does
-	not exist as long as there are other skills with the same 3 digit prefix. It
-	only determines whether a piece of data can be loaded.
-	* In Skill data loader, the player skill operations are now separated from
-	those of mob skills, as they rightfully should be.
-	* I'm really getting ahead of myself by adding a MapFactory instance
-	variable in argonms.game.WorldChannel.
-
-2011-01-29  GoldenKevin  (revision 7)
-
-	* Made some progress on the Telnet listener. Now special telnet chars
-	( > 0x7F) are handled properly and won't be in the ASCII string. Just a few
-	more tweaks to the way some ASCII chars are handled and it will be ready...
-	* Fixed NullPointerException in SkillDataLoader.
-	* Fixed MCDB loading of mobs and skills.
-	* Added classes for inventory (items, equips, pets, rings, etc.) and moved
-	Player class from argonms.game to argonms.character.
-	* Support for KvjCompiler r14. Changes include Character.wz compiling and
-	reduced size of Mob files.
-	* Character.wz is now processed in KvjItemDataLoader. Taming Mob IDs are now
-	read in McdbItemDataLoader as well. In McdbItemDataLoader, equips can now be
-	made tradeBlocked.
-
-2011-02-04  GoldenKevin  (revision 8)
-
-	* Fixed some inconsistencies when passing java.awt.Point/(x,y) parameters to
-	mutator methods in data loader objects. Now all parameters are passed as
-	x and y integers to reduce imports.
-	* Renamed IItem to InventorySlot. Equips don't have any bonuses for "hands"
-	so that was removed from the Equip class. Inventory class now implemented.
-	Pets now are implemented and Rings have been updated.
-	* Player class has been implemented enough for Login Server usage. Some code
-	was copied directly from OdinMS, so some stuff needed for the Game Server
-	do not work yet or are inefficient (ahem, MapleMap.nearestSpawnPoint).
-	* Login server now has matured to a point where the client can be
-	transferred to the game server! Characters can be created and loaded from
-	world charlists and global charlists. Fixed some
-	ArrayIndexOutOfBoundExceptions caused by off by one errors.
-	* Refactored Game Server accept in Login Server. Now the IP address of each
-	world is resolved upon their connection so we won't have to do it every time
-	a client selects a character in the Login Server.
-	* GameClient has been updated. There are small stubs of code for Game Server
-	loading of a player (copied directly from OdinMS), although there's still a
-	long way before the player can actually be placed in a map.
-	* Added a CheatTracker class that does... nothing! Yet.
-
-2011-02-12  GoldenKevin  (revision 9)
-
-	* Fixed logging of unhandled packets from clients.
-	* Moved argonms.net.client.ClientLoginPacketProcessor
-	to argonms.login.ClientLoginPacketProcessor
-	* Moved argonms.net.client.ClientGamePacketProcessor
-	to argonms.game.ClientGamePacketProcessor
-	* Moved argonms.net.client.ClientShopPacketProcessor
-	to argonms.shop.ClientShopPacketProcessor
-	* Moved several constants from KvjEffects to StatEffects because their use
-	wasn't limited to KVJ effects loading.
-	* Added accessor methods to MobSkillEffect and StatEffects. Lt and Rb
-	mutator methods for MobSkillEffects now accept two shorts instead of a Point
-	* Fixed negative array index size occurring when packet length was greater
-	than the maximum value (127) of a signed 8-bit integer (byte).
-	* Fixed finding the next free item position in inventory
-	(Inventory.getFreeSlots). First item is 1, not 0!
-	* Added Taming Mobs/Mounts as another inventory item type. Hopefully, this
-	should be the last one as the inheritance for InventorySlot is getting
-	complicated...
-	* Player can now enter a map in the GameServer. While they can move, they
-	can't see other players and other players can't see them. They cannot
-	interact with anything or change maps/channels and there are no spawns for
-	NPCs/Mobs. All of these additions will come gradually.
-
-2011-02-19  GoldenKevin  (revision 10)
-
-	* Fixed bug in LittleEndianByteArrayWriter. If a large enough byte array was
-	copied to a small buffer, there was an ArrayIndexOutOfBoundsException. Also,
-	a one byte long LittleEndianByteArrayWriter can now grow!
-	* Renamed MapleMap to GameMap.
-	* You can now see other players moving around in a map (you can't see them
-	attacking yet though). NPCs are visible (at least in map 0), but I think
-	mobs currently crash clients. Portals still don't work yet... A lot of
-	credit should go to OdinMS for this particular update!
-	* Made some progress on making a scripting interface for NPCs. I think I
-	might actually write my own language if I don't find ways to circumvent my
-	current issues with it. A sample 2100.js script is included.
-	* Added code stubs for NPC shops. It should be easy to implement later on.
-	* Refactored map object related code. Players now keep their charid in the
-	MapObject class (referred to as an "object id"). I think MapObjects are a
-	bit more modular/OO now...
-	* Fixed bug where an account was recorded as being logged in even if their
-	login attempt was not successful. Also fixed a client error reading bug.
-	* canLoad methods for the data loaders now check if the stats are in the
-	cache before delving into their IO routines.
-	* And a whole lot of other bug fixes/improvements on things that I was not
-	able to spot before.
-	Kvj structure updated - Update your KvjCompiler and recompile your data.
-	Consult the KvjBin changelog to see a list of changes in r15.
-
-2011-02-21  GoldenKevin  (revision 11)
-
-	* Improved "say" commands for NPC scripts. Now the "prev" button is handled
-	correctly, although you have to keep in mind special cases and limitations.
-	(read the comments in NpcConversationActions for more details).
-	* Mozilla's latest version of Rhino (1.72R2) is now used instead of Java 6's
-	modified version 1.6R2 in javax.script. 1.72R2 is much more flexible and
-	contains features that I needed for efficient stateless NPC scripts. Now
-	endChat hooks are supported and each NPC script doesn't require a dedicated
-	thread anymore. Updated Sera script to show a bit of it's capabilities.
-	(you don't have to have a endChat function and scripts don't need any
-	functions. Just be sure to call the function in the global scope if you do
-	want to invoke one). Be sure your classpath now includes Rhino's js.jar.
-	* A bunch of other code stubs for map/channel changing, and for channel
-	variables (e.g. exp, meso, and drop rates) that I will finish in the future.
-	Some routines that were previously LoginClient specific are now common.
-
-2011-02-23  GoldenKevin  (revision 12)
-
-	* Replaced isSealed() checks with our own boolean instance variable in
-	NpcConversationActions. I realized you can't seal it before throwing the
-	continuation, but I can't throw the continuation before sealing it. I didn't
-	catch this before because it's a very rare occurrence to have the script
-	forcefully halted while in the middle of evaluation (and not while waiting
-	for a response) - Rhino/JavaScript isn't THAT slow. I'm probably going to
-	have to also synchronize the terminated variable, but I will leave it the
-	way it is until I start get cases of it acting up.
-	* NpcConversationActions.askAvatar now returns the player's selection.
-	* Some InventorySlot changes. Unique IDs are now long. Corrected pet packet
-	structure - footholds are now short, and the other two bytes were actually
-	bools. Ring's partnerRingUid are now long (even though the current packet
-	structure for rings gives it as an int).
-	* Renamed GameHandler to GameEnterHandler to disambiguate it's purpose
-	somewhat (since it handles connections and map entering).
-	* Completely rewrote interserver communication to accommodate splitted
-	worlds, i.e. so that all channels of one world don't have to be running on
-	the same process (so that channels can be spread out across many servers).
-	Modified game0.properties, game1.properties, and added game2.properties to
-	demonstrate how to use the new features.
-	* Restructured classes for interserver communications. Classes only required
-	by the Center Server are now in the argonms.center package, and only the
-	classes required by the remote servers (e.g. abstract classes) or required
-	by both the Center Server and remote servers (e.g. packet header values) are
-	located in argonms.net.server. Many classes have been renamed and overall
-	there has been a huge refactoring in the structure.
-
-2011-02-23  GoldenKevin  (revision 13)
-
-	* Some code cleanup after that large revision I just previously committed.
-	* Channel changing is now supported. Portals can now be entered and you will
-	be properly warped (clients still crash when they encounter mobs though, I'm
-	working on that fix right now...)
-	* Renamed argonms.game.npcscript to argonms.game.script. Added a new class
-	for Portal scripts and updated NpcScriptManager with quest script stubs in
-	order to support quests in the future.
-
-2011-02-27  GoldenKevin  (revision 14)
-
-	* KvjCompiler has been updated to r16, which fixes Skill.wz compiling.
-	* Renamed MapObject (and related classes) to MapEntity to disambiguate any
-	confusion with Java objects. In a language where pretty much everything is
-	an object, Entity suggests something more real and existential.
-	* Fixed an oversight in Inventory.getFreeSlots. Added a canFitEntirely in
-	InventoryTools in case we want to check if an item fits completely before
-	calling InventoryTools.addToInventory (whose behavior is to fit as many as
-	possible). Changed the return type of addToInventory to accommodate another
-	usage for it. Fixed InventoryTools.equip, overloaded unequip to support
-	cases where we want to fetch the next available slot, added isEquip(int) to
-	replace usages of getCategory(int).equals("Equip"), added isTwoHanded and
-	getWeaponType for future updates, and getCategory now returns an
-	InventoryType (original method has been renamed to getCategoryName).
-	* Mobs don't crash the game anymore, and are animated. Other players still
-	cannot see when you attack them (or if you just swing your weapon), and you
-	still cannot hurt them. Attack parsing/processing is very complicated and
-	will take some time to be completed.
-	* Skill levels of players are now saved to the database.
-	SkillLevel accessor methods now return byte values.
-	* Fixed Player.isVisible() returning the opposite value.
-	* Items and mesos can now be dropped and picked up by players, and will
-	expire properly. Fixed some visual glitches in ItemDrop. It should work with
-	mob drops as well, but I still can't attack them so I can't test it (player
-	inventories don't show change in meso values unless they relog because I
-	still haven't coded stat updates, but they are modified internally).
-	* Got the real packet send opcode for removing NPCs from a map using a
-	little bit of educated guessing (I'm surprised that Vana and the more
-	popular flavors of OdinMS haven't figured this one out yet). Also, NPCs now
-	send their control packet to every player that joins the map (why do we have
-	to do that?)
-	* Only users with elevated privileges can use the /m command to change maps.
-	* Fixed the access modifier of LittleEndianReader.skip. It should be public!
-
-2011-02-27  GoldenKevin  (revision 15)
-
-	* Fixed bug with InventoryTools.equip when equipping shields or two handed
-	weapons.
-	* I realized how broken endConversation still is. I guess we can only hope
-	that there are no blocking operations in the scripts and that there we would
-	be a quick call to any one of the NpcConversationAction methods that throw
-	a ContinuationPending so that we can dispose of the script, because from
-	what I see, there is no way to interrupt an executing script.
-	* Replaced synchronized blocks in GameMap with a ReentrantReadWriteLock for
-	better performance with the read heavy Collections. Hopefully I know my
-	concurrency stuff and we won't have deadlocks arising from this update...
-	* Renamed MapEntity.getShowObjectMessage to getShowEntityMessage. Missed
-	that one when I went through the renaming sweep...
-	* Replaced PortalActions' Player instance variable with a GameClient one.
-	If the PortalActions object somehow survived and the Player would not be
-	garbage collected as a result of that one reference, it would be cheaper to
-	keep a GameClient instead of a Player object. I could have used a
-	WeakReference<Player>, but I think a GameClient instance is more useful
-	than a Player instance in the Portal's context anyway.
-	* WeakReference<Player> is now used for Mob controller references in case
-	a mob is still alive when the Player leaves the server. I'm not sure how I
-	will use highestDamageKiller, so that still is a regular Player reference.
-	* Fixed some instantiations of LittleEndianByteArrayWriter to use the
-	correct amount of bytes when using the constructor that specifies the array
-	size. Forgot to update some of them when I rewrote inter server comms.
-	* Fixed logging for RemoteServerListener and the problem with swallowing
-	exceptions. Forgot to update logging.properties when I rearranged classes
-	involving inter server communication.
-
-2011-02-27  GoldenKevin  (revision 16)
-
-	I played around with SVN special properties a bit, and made these changes
-	(Subversion/auto-props is awesome):
-	* Bash scripts for Linux now have the property "svn:executable" set.
-	* Added "svn:eol-style" properties that make sense for each text file -
-	e.g. CHANGES, LICENSE, *.properties, *.sql, *.java, and *.js files are set
-	to native; *.bat are set to CRLF; and *.sh are set to LF. Any new text files
-	will also have these eol-styles based on their file extension/file name
-	* Added svn:mime-type to most files (except .bat and .sh files, because they
-	have mime types beginning with "application/", and that wouldn't work out
-	too well with SVN's handling of diffs). *.jar files now have a mime-type of
-	application/java-archive instead of the generic application/octet-stream.
-
-2011-03-04  GoldenKevin  (revision 17)
-
-	* Fixed Player pets not showing to rest of map, and NPC control packets not
-	being sent to players. Packets had to be sent separately and could not be
-	combined, so now MapEntity.getShowEntityMessage() and getCreationMessage()
-	return an array of byte arrays (and their method names are now plural!) It
-	may have a performance penalty for any entity that didn't send multiple
-	packets when spawned, but it should increase performance of Player and NPC
-	spawns (no more copying arrays). NPCs are now animated.
-	* Fixed non-ranged entities not sending their creation packet to everyone in
-	the map, and ranged entities sending their creation packet to everyone in
-	the map (yep, I had them swapped).
-	* Added a convenience method for writing a 4-byte Point to a stream and for
-	reading such a Point from a stream. Refactored code accordingly.
-	* PlayerLog now uses two ConcurrentHashMaps instead of monitor synchronized
-	vanilla HashMaps to reduce complexity and hopefully improve performance.
-	* Updated GameMap to use a separate ReadWriteLock for each Collection to
-	improve performance (also fixes a deadlock when respawning monsters).
-	* Somewhat solved the Center server concurrency issues by only allowing
-	one server to connect at a time so that when servers that need to notify
-	each other connect at the exact same time, they will not potentially miss a
-	message. Also, added a disconnected variable in CenterRemoteInterface in
-	case a server disconnects while there is a read going on (and we have to
-	wait for a write lock before we are able to remove/null the server).
-	* Channels now send their actual load instead of just an increment/decrement
-	notification. This is in case a login server disconnects and reconnects and
-	they don't know the previous loads. Will decrease performance somewhat
-	because we have to call size() on a ConcurrentHashMap in PlayerLog instead
-	of being able to send a constant true or false...
-	* Renamed disconnect methods to disconnected to avoid possible confusion.
-	* Fixed error in Kvj Skill.wz loading caused by prop being read an int
-	instead of a short.
-	* Monsters can now die from regular melee attacks. Skills, magic attacks,
-	and arrow/star/bullet attacks still are still not handled yet. Respawning
-	seems to be bugged, so I'll have to fix that up. Players still do not take
-	damage from mobs, so I'll be working on that as well.
-	* Inventory mesos count is now updated when you drop/pick up mesos.
-	* Renamed argonms.loading.StatEffects to StatEffectsData and moved all of
-	its constants to the class argonms.StatEffect. Likewise renamed ItemEffect
-	and SkillEffect to ItemEffectsData and SkillEffectsData respectively.
-	* Cooldowns should be handled properly once implemented. Execute the updated
-	SQL so that you won't get database exceptions when loading/saving characters
-
-2011-03-12  GoldenKevin  (revision 18)
-
-	* Fixed items dropped by players not having the correct quantity.
-	* Mobs now spawn first at the SpawnPoint with the lowest amount of mobs
-	alive (or, whichever has the lowest nextPossibleSpawn if there are any that
-	have the same amount alive), not the first spawn that was added to the map.
-	* Improved some methods in LittleEndianReader and LittleEndianWriter. Bytes
-	are now buffered more so that for most methods, only one method is called
-	and is passed a byte array, instead of many methods being called that pass
-	individual bytes. Avoids invocation overhead, and there is only one bounds
-	check for ByteArrayWriter and faster performance for StreamWriter/Reader.
-	* Fixed query errors when saving/loading pets.
-	* Get slot max now returns 1 for pet items (if not loading from MCDB).
-	* Optimized HexTool a little bit.
-	* Added a stub for a command processor. Any chats that begin with an
-	exclamation point (!) or an at sign (@) will not be broadcast, and will be
-	sent to CommandProcessor.process(), which does nothing at the moment.
-
-2011-03-21  GoldenKevin  (revision 19)
-
-	* Fixed some bottlenecks in LittleEndianReader and LittleEndianWriter that
-	resulted from the last update. When reading strings, we assume it is ASCII,
-	so we can just assume a char is only one byte, avoiding the overhead of
-	CharSet for encoding. Reading and writing 16-bit and 32-bit integers by
-	copying an array is faster for Stream I/O, but the old methods worked faster
-	for byte arrays. Therefore, I overloaded the read/write int and
-	read/write short methods in the byte array reader/writer classes.
-	* Fixed issue where you couldn't do anything after you visited a scripted
-	portal that doesn't warp you anywhere (added PortalActions.abortWarp).
-	* Portals point to a null map if they do not have a tm property (previously,
-	they pointed to map 0, which is a perfectly valid map, but is probably
-	unintended).
-	* Added NPCs that will warp you from the Mushroom Town Training Camp to the
-	outside world.
-	* Updated KvjBin to r17. Major changes include the inclusion of mob summons
-	data needed for a mob skill, the lowering of the word size of several
-	integer properties, and custom mob drops. MCDB should also be able to load
-	mob summons data. KvjCompiler has been tweaked as well, and all crashes and
-	freezes should be fixed (I performed a full compile with no errors).
-	* Fixed loading of mobs. When I fixed player skill's prop reading, I forgot
-	about making the same change in mob skills.
-	* Preparing for the inclusion of mob player-diseases and mob self-buffs.
-	* Added preliminary take damage handler. All physical mob attacks should be
-	handled correctly. No mob skills should be handled correctly at all. Healing
-	through standing still now changes your hp/mp accordingly.
-	* Facial expressions should now broadcast to the map.
-	* MCDB now loads mob attacks. Also fixed several bugs in MCDB (mob) loading.
-	* Refactored MapEntity.getShowEntityMessage/getCreationMessage. Now only a
-	byte array is returned, and we send the extra data in the GameMap methods
-	in order to speed up sending data for map entities that do not have extra
-	packets that need to be sent.
-
-2011-03-24  GoldenKevin  (revision 20)
-
-	* Refactored player buffs and diseases. Combined them into a single
-	PlayerStatusEffect. MobSkillEffectsData is now related to SkillEffectsData
-	(which has been renamed to PlayerSkillEffectsData) and ItemEffectsData.
-	* Modified GameMap to take advantage of several new classes that I wrote so
-	I could remove all the lock instance data, which helps declutter it. I only
-	added documentation for Lockable(Hash)Map, but I'm sure you can infer what
-	the other similar classes do once you read through that.
-	* Fixed NullPointerException in login server when a game server is closed
-	after it has connected to the center server but before it is ready/online.
-	It was an issue in the center server code that I overlooked...
-	* Tidied up the encryption/decryption routines to conform more to my
-	standards.
-	* All creations of a Random instance and every call to Math.random has been
-	replaced with a call to a centralized Rng class. The class is ThreadLocal,
-	so it should perform a slight bit better than Math.random when there are
-	many concurrent calls, and should reduce the amount of instantiations of
-	Random as it is now one instance per thread.
-
-2011-04-04  GoldenKevin  (revision 21)
-
-	(argonms.jar WILL NO LONGER BE RECOMPILED IN EVERY REVISION. THIS BLOATS
-	THE SVN REPOSITORY, SO FROM NOW ON, YOU WILL HAVE TO BUILD IT YOURSELF FROM
-	NETBEANS OR EXPORT A .JAR FILE IN ECLIPSE). If your NetBeans project is not
-	named argonms, you may have to rename the .jar file when you compile it.
-	* Renamed all buff methods in Mob to effect to be consistent with Player
-	class and because not on effects placed on monsters are buffs, i.e. debuffs.
-	* Player disease cancels are now removed when a player logs off.
-	* All methods in PlayerScriptInteraction are to be in third person when
-	dealing with actions done to the player to be consistent with mobs and
-	other map life, as the script performs actions on the player. The script
-	should not be the player.
-	* Reorganized some code: moved mob drop routines from GameMap to Mob;
-	reordered and added gain/set methods of Player in a logical manner;
-	Added more PlayerJob and Skills constants; PlayerStatusEffectValues cleaned;
-	PlayerScriptInteraction is the ancestor of NpcConversationActions and
-	PortalActions (both of which are no longer static classes);
-	PortalScriptManager.runScript now returns a boolean, which is changed by
-	PortalActions.abortWarp (instead of sending CommonPackets.writeEnableActions
-	in abortWarp, the call to it is now handled by the caller of runScript);
-	split CommonPackets.writeShowItemGain into writeShowItemGainFromQuest and
-	removed inChat variable; Merging of header and body in ClientListener gone,
-	we just send the header and the body arrays to ChannelBuffers.copiedBuffer.
-	Although we still have to eventually merge the two arrays by copying, it
-	makes our own code tidier as the copying logic is done elsewhere; Reordered
-	CommonPackets methods; Added constants to ItemDrop to deal with magic nums.
-	* Added a writeStyledChat method in GameChatHandler. This will probably be
-	the only "fun" feature I add to this source in a long time.
-	* Added support to specify scripts directory from a command line option.
-	This was necessary for the proper functioning of the ArgonMS GUI Launcher.
-	* Fixed any glitches that would have occurred for account item storage/
-	account cash shop storage. An update to your SQL database is necessary.
-	* Implemented CommandProcessor with an implementation that isn't the most
-	efficient, but is better designed than alternatives. In order to create a
-	command definition, you must specify the help text with it.
-	* Item drop packet is more accurate.
-	* Mobs now give exp when they die, and I believe level up and the stat gains
-	that are associated with it work properly. Still gotta implement exp loss
-	when a player dies...
-	* Enabled GameRegistry. Properties are now loaded from game#.properties, and
-	so far getExpRate(), getDropRate(), getMesoRate(), and doMultiLevel() are
-	used somewhere on the game server.
-	* Fixed drop placement from mob deaths.
-
-2011-04-06  GoldenKevin  (revision 22)
-
-	* Added help message to !rate command.
-	* Fixed freakish positioning of drops when dropping on a rope or in the air.
-	* Show inventory full message when picking up a drop and inventory is full.
-	* Fixed deadlock when item drops expired.
-	* Random.nextDouble methods used in MobStats for chance calculations are now
-	replaced with nextInt. Should now be less biased and maybe faster (both of
-	which are results of having fewer floating point operations).
-	* Fixed issue with mob drops where the items don't appear to come from the
-	mob (they just rose and fell in the x coordinate that they rest in, not from
-	the mob's center).
-
-2011-04-06  GoldenKevin  (revision 23)
-
-	* Mobs now show HP bar when attacked (and boss HP bar should show up to the
-	whole map, but it's untested as of commit time).
-	* Reorganized mob drop routines to allow and take advantage of code reuse
-	when reactor drops are implemented. These functions are now in GameMap.
-	* Self destructing mobs will now show the correct animation and will die at
-	the proper HP impetus.
-	* Fixed bug when using the command /m 0. Incorrectly recognized as a death
-	warp. Also fixed unnecessary writeEnableActions that are sent to the client
-	no matter the result of a portal warp (forgot to return the value returned
-	by enterPortal(Player, PortalData) in enterPortal(Player, String) if the
-	search for a portal with a matching name was found). I think clients are
-	stuck waiting for a response when using the /m command, so if the client
-	does not have sufficient privileges or just does not warp, it is sent a
-	writeEnableActions.
-	* Players will be sent to their forced return map when they log in if their
-	map has one (it's better than sending them to the forced return map when
-	they log off because in the case the server crashes, they still will be
-	warped back the next time they log back on).
-	* Added decrease HP tasks that are present in several maps, as well as a
-	map time limit task. The implementations may leak memory, so I'm going to
-	profile them later (Stupid ScheduledFuture.cancel).
-	* Players going through the Mushroom Town Training Camp or the Showa Spa
-	will be given the appropriate costumes.
-
-2011-04-10  GoldenKevin  (revision 24)
-
-	* Don't explode Mob if one hit KO'ed.
-	* Fixed bug where a player was unable to warp if they picked up mesos.
-	* Players will not pick up meso drops if it makes them exceed the maximum
-	amount (2147483647).
-	* Added a meso option to the !stat command. Values greater than 2147483647
-	will no longer throw a NumberFormatException on the server, but instead will
-	send a syntax message to the client.
-	* Cleaned up time limit stuff in GameMap. The clock is automatically removed
-	by the client when the player changes maps, so we don't have to send the
-	clock close message.
-	* Tentative fix for visible ranged map entities disappearing when jumping
-	down. May need tweaking in the future.
-	* Renamed any remnants of variables/methods with names based on map entity's
-	previous name of map object in order to eliminate any confusion.
-	* Made Player.visibleEntities a LockableList as there is a possibility of
-	concurrent access from GameMap and from Player on different threads.
-	* Temporary fix for client freeze when multiple map item drops visibly
-	disappear at the exact same time. Will need further testing to get to the
-	root of the problem. The current fix suggests that the underlying problem is
-	a thread concurrency problem.
-	* Slightly optimized WorldlistHandler.loadCharacters so only one database
-	query is needed.
-	* Updated argon.sql again because I forgot to specify the constraint for
-	`inventoryitems`.`accountid`.
-	* Some refactoring in GameMap - drop(ItemDrop) is no longer public and must
-	be indirectly called by the public overloaded drop methods.
-	* No longer show "You have gained +-x mesos" when dropping mesos.
-
-2011-04-13  GoldenKevin  (revision 25)
-
-	* Added support for modifications of the key map.
-	* Renamed GamePlayerHandler to GamePlayerMiscHandler.
-	* Starting to code support for castable/usable/consumable skills/items.
-	Added support for:
-		* Magic Guard
-		* Hide (which was half coded in already anyway)
-		* And the parts of any skill that generically increases [m|w][atk|def],
-		speed, jump, etc.
-	* Fixed MCDB skill data loading adding every effect for any skill.
-	* Fixed a lot of StatusEffectsData problems. Please update to KvjBin r18 and
-	recompile your Skill.wz and Item.wz.
-	* You can cast and cancel buff skills and items (including Hide, which
-	should be applied to every GM when they log in). Whether the skill/item
-	actually buffs you is a whole 'nother story. Working on them at the moment
-	though...
-	* Potions that simply heal your HP or MP should work.
-	* Hide actually makes you appear like you're in Dark Sight, but you can
-	still cast skills and attack (credits to Vana for that one).
-	* There is now a distinction between a Player's base stats and his stats
-	adjusted with buffs. The current implementation works, but it's not perfect
-	yet (still looking for any alternatives that may be faster), so watk, wdef,
-	matk, mdef, acc, eva, hands, speed, and jump bonuses from skills and equips;
-	str, dex, int, luk, hp, and mp bonuses from equips; and hp and mp percentage
-	based increases from hyperbody are now recognized on the server. Str, dex,
-	int, and luk are under the assumption that all bonuses are by addition only,
-	(i.e. no percentages). If any percentage based bonuses are introduced for
-	those aforementioned stats, then they will have to use similar routines to
-	those of maxHp and maxMp (albeit without the remHp and remMp checks).
-	* Added support for pings being sent to idle connections.
-	* Enabled TCP_NO_DELAY (disabling Nagle's Algorithm) because it caused some
-	noticeable latency when connecting from anywhere besides localhost
-	(especially demonstrated by a monster dropping multiple items).
-	* Fixed a frequent source of NullPointerExceptions in TakeDamageHandler.
-	* Fixed ranged monsters not appearing when a player warps to a map and warps
-	back.
-	* Added !skill and !give commands for GMs. "!stat set exp 0" now works if
-	you are level 200.
-
-2011-04-14  GoldenKevin  (revision 26)
-
-	* Renamed package argonms.net.client to argonms.net.external and
-	argonms.net.server to argonms.net.internal. Thus, external refers to any
-	communications with a MapleStory client, while internal refers to inter-
-	server communications with other servers that use the ArgonMS protocol.
-	* Distributed all classes from argonms.net.external.handler into packages
-	specific for each type of server (i.e. argonms.game/login/shop.handler).
-
-2011-04-20  GoldenKevin  (revision 27)
-
-	* Moved argonms.tools.Pair to argonms.tools.collections.Pair, and got rid of
-	its accessor and mutator methods. left and right values of a Pair are now
-	immutable and can be directly accessed by the public members left and right.
-	* Updated logging.properties to refer to the new locations of some classes.
-	* Added a !spawn command.
-	* Added a !tp command to teleport one player to another, and an !info
-	command that gives the location of a player. Both require that any
-	referenced characters are on the same channel as the caller.
-	(PlayerLog.getPlayer(String) is now case insensitive).
-	* Fixed "!stat set exp 0" at level 200.
-	* Replaced usages of Pair<List<String>, List<String>> in InventoryTools with
-	the more semantical and succinct static nested class UpdatedSlots.
-	* Consume on pickup items should now function correctly.
-	* Standardized methods for getting the WZ identifier of certain entities, as
-	well as maps themselves (e.g. Mob.getMobId() is now Mob.getDataId()).
-	* Added a getDataId() method to Player even though it returns the same value
-	as getId() at the moment. Will make future refactoring easier if I choose to
-	differentiate between a Player's database character id and the Player's map
-	entity id.
-	* Renamed MapEntity.MapEntityType to EntityType.
-	* GameMap.entities is now split up into separate entity pools since the
-	client has separate pools for each entity type. Should solve some issues
-	with entity id exhaustion on busy maps (and remove the artificial limit of
-	30000 non-Player entities per map). The SQL has been updated to reflect
-	these changes on the Player's side.
-	* Readded foothold IDs to the data. KvjCompiler updated to r19. Please
-	recompile your Map.wz.
-	* Equips from monster drops now have randomized stats.
-	* Fixed some monster drop issues when dropping certain equips.
-	* Added Miniroom and PlayerShop map entity stub classes. HiredMerchant
-	extends PlayerShop now instead of Npc.
-	* Fixed mob deaths when using MCDB.
-
-2011-04-22  GoldenKevin  (revision 28)
-
-	* Moved !spawn command into a separate class.
-	* Added a !id command to look up the data ID of an object based on its name.
-	* Implemented player NPC packets. Still haven't worked on saving/loading and
-	the placement of them though (I provided a !playernpc command to create a
-	temporary one of yourself).
-	* Fixed up NPC packets. writeShowNpc is redundant if we send writeControlNpc
-	Renamed writeControlNpc to writeShowAndControlNpc. Fixed removing NPCs (we
-	have to call writeStopControlAndRemoveNpc instead of just plain
-	writeRemoveNpc, which only works if we wrote writeShowNpc to spawn the NPC).
-	* Player NPCs and regular NPCs share the same entity pool. Removed
-	EntityType.PLAYER_NPC.
-	* Mobs begin immediately animating when a player leaves hide. Although they
-	will still continue animating even after the player goes into hide until the
-	player changes maps.
-	* Spawned NPCs now are in the direction of the player when it was spawned.
-	* Fixed issues with mobs not animating when a player enters a map.
-	* No more unhandled packet messages when passing by a Maple TV.
-	* Combined several EntityTypes that I believe would be in the same entity
-	pool on the client. Now, the entity types that were combined have a more
-	specific sub entity type to identify each distinct map entity.
-	* Reorganized miniroom stuff in a more sensical manner.
-	* Modified the behavior of map entities, and made the usages of isAlive()
-	and isVisible() more standardized. Ranged entities are added to the Player's
-	visible map entities when spawned (instead of when the Player starts moving)
-	and moving mobs will be included in the Player's visible map entities if
-	they move toward the Player's view. Dead ranged entities are now removed
-	from a Player's visible map entities.
-	* Reactors are now visible, although you can't destroy them.
-
-2011-04-25  GoldenKevin  (revision 29)
-
-	* Locked some more things that needed locking in GameMap.
-	* StringDataLoader has been brought up to the standards of the rest of the
-	DataLoaders. Optimized McdbStringDataLoader.
-	* Started adding support for KvJ Quest.wz loading. Update to KvjBin r22.
-	MCDB Quest loading soon to come (so far, the names of quests are loaded in
-	MCDB so you can perform an ID lookup on them through the !id command).
-	Quests are preloaded unconditionally (like Strings) because Quest.wz
-	contains too few files (and each of which are relatively small) to justify
-	any checking to see if a piece of data has been loaded or not and any
-	synchronization overhead.
-	* Fixed hide expiring immediately when using MCDB.
-	* Made quite a lot of headway into implementing quests. Finished many code
-	stubs. There is still a lot to do (not all QuestRewards are done and not all
-	QuestChecks are performed) and quests that rely on the destruction of
-	reactors are not finishable at the moment.
-	* Fixed expiredate field in the inventoryitems table. It is now a 8-byte
-	integer instead of a 4-byte one. Added queststatuses and questmobprogress
-	tables for saving a player's quest progress. Please update your database.
-	* Added a PacketSubHeaders class. Read the class javadoc for more info.
-	* The assorted timestamps that are sent to clients are now adjusted
-	according to the server's time zone upon server start. Previously, each
-	timestamp was in UTC time.
-	* Added quest scripts for Roger's Apple.
-
-2011-04-27  GoldenKevin  (revision 30)
-
-	* Fixed McdbItemDataLoader so that it works when using a clean MCDB 3.0.
-	Sorry, I forgot that my MCDB schema was customized to include additional
-	information that is not present in the clean dump.
-	* Refactored mob req stuff for quest status. No need to keep a copy of the
-	mob reqs in each quest entry... Every quest completion requirement is now
-	checked, and if the Player satisfies all of them, he will receive the proper
-	"Quest completed" notification. Implementation-wise, I'm basically doing a
-	two way mapping between quests and their requirements in the Player class.
-	* Item quest actions now function properly. Items can be given or taken away
-	with the right quantity and the right notifications are sent to the client.
-	* Implemented as much of McdbQuestDataLoader that I can. The clean MCDB
-	quest data tables don't give me much to work with.
-	* Implemented reactors. I tested it on several simple ones (such as 2000 in
-	Amherst for Pio's quest) but I haven't tried any item triggered or touch
-	triggered reactors yet. Also added reactor scripts in case you want to
-	perform some kind of specific action when a reactor is destroyed (or
-	triggered to the end).
-	* Split writeInventoryAddSlot from CommonPackets.writeInventorySlotUpdate as
-	the two actions are relatively unrelated and there's no reason to have them
-	combined in one method.
-
-2011-05-03  GoldenKevin  (revision 31)
-
-	* Skills and buff items should now expire properly.
-	* Refactored StatusEffectTools and the Player class' interface for applying
-	effects. StatusEffectTools now only contains common methods that all types
-	of status effects (i.e. buff skills, buff items, debuffs from monsters).
-	The specific behaviors for the aforementioned status effects are now split
-	into their own classes.
-	* Mob skill IDs are now represented internally as 2-bytes (short) instead of
-	4-bytes (int). In order to simplify compiling of Skill.wz in KvjCompiler,
-	mob skill IDs are still 4-bytes on the KVJ files (and are just downcasted).
-	* Fixed unable to warp bug following a skill cast.
-	* Fixed reactor and player drops being dropped from the wrong place if a mob
-	with the same entity ID was visible on the map.
-	* Added more definitions to PlayerJob.
-	* Made some progress on ranged attacks (still nothing on magic attacks yet).
-	* Rechargeable ammo (stars, bullets) are now a special case in the inventory
-	manipulation functions in InventoryTools. Adding rechargeable items to the
-	inventory will not change the quantity of non-full items that share the same
-	item ID, and removing rechargeable items will not clear the slot if the new
-	quantity equals 0.
-	* Quest requirement watching in Player should perform a bit better now.
-
-2011-05-05  GoldenKevin  (revision 32)
-
-	* Messages are now sent to players on the same map when a player changes
-	their equipment.
-	* Added some sort of consistency to enum getValue/valueOf method names.
-	PlayerStatusEffect keys have been renamed for consistency and to match with
-	Java's standard naming convention for constants (i.e. underscores for names
-	with spaces), and some to match with the source skill's name.
-	* Every player on a map should be sent the buffs of a player that enters the
-	map once that player enters (CommonPackets.writeShowPlayer). This method,
-	like writeUseSkill, writeGiveDebuff, writeBuffMapEffect, and
-	writeDebuffMapEffect, is extremely buggy and will crash clients pretty
-	frequently. If you can reproduce any crashes resulting from buffs/debuffs,
-	just send me a report of what skills were being used.
-	* Fixed up attack skills A LOT. Meso explosion works perfectly fine, and I
-	perfected my procedures through Vana inspirations and extensive testing.
-	Note that this is only for ranged and melee attacks as of the moment, and
-	summons, magic, and energy charge are not yet handled properly.
-	* Fixed attacking when shadow stars is active.
-	* Fixed cooldown saving in Player giving errors.
-
-2011-05-07  GoldenKevin  (revision 33)
-
-	* Merged BuffsData file into StatusEffectsData, while preserving the
-	BuffsData class itself as an inner class for better organization.
-	* Made some progress with mob status effects (player skills that give mobs
-	debuffs, and mob skills that give the mob buffs). Still far from complete.
-	* Renamed SkillTools.useBuffSkill to useCastSkill and readded duration check
-	because not all skills that pass through GameBuffHandler.handleUseSkill is a
-	buff (e.g. heal).
-	* Cleaned up DealDamageHandler. Removed AmmoType enum and replaced it with a
-	WeaponClass enum to match with the packet. Had to remove some ammo checks,
-	but it is better designed and is less redundant (use info that client gave).
-	* Removed unnecessary things from mob skill stats.
-
-2011-05-08  GoldenKevin  (revision 34)
-
-	* Fixed Roger's Apple giving the completion message at the wrong time.
-	* Support for the various flavors of MP Eater.
-	* Support for magic attacks. Much easier than I anticipated.
-	* Support for !skill command to set a skill level to 0 (remove the skill).
-	* Support for energy charge. It works for all weapons and jobs, so if
-	somebody ever adds in a rebirth system, you better consider that.
-	* DealDamageHandler now reports the correct mastery level of a player when
-	sending attack packets to the map.
-	* Supposedly added support for summon attacks, but I have no idea if it
-	works since I didn't even implement summons yet. =P Nonetheless, that should
-	make DealDamageHandler *nearly* feature complete.
-	* Fixed stars/bullets being removed from inventory when exhausted. Stars
-	show properly to other players on map.
-	* Fixed MCDB loaded skills and quests.
-
-2011-05-08  GoldenKevin  (revision 35)
-
-	* Fixed quests not starting if they required the Player to have not started
-	a different quest, and that Player did not forfeit it.
-	* Fixed no mob respawns occurring in a map with few mob spawn points.
-	* Added a !town command for quick access to some maps without having to look
-	up the map id for it.
-	* Support for cooldowns. Moved cooldown stuff to SkillTools.skillCastCosts
-	as cooldowns are common for both attack skills and castable skills.
-	* Cleaned up DealDamageHandler. We are given attackCount in the packet, so
-	no need to recalculate that. Also, just store projectile item id in the
-	AttackInfo structure so we don't have to pass it to the packet methods. Cash
-	stars had precedence over the actual stars, so we should check the item IDs
-	for cash stars after we check the regular ones.
-
-2011-05-15  GoldenKevin  (revision 36)
-
-	* KvjBin updated to r24.
-	* Support for prepared skills, which include every keydown attack skills, as
-	well as non-attacking skills like monster magnet and Chakra, and non-keydown
-	attack skill like explosion (FP mage skill). All keydown skills are prepared
-	but not all prepared skills are keydown? I don't understand the difference
-	between them, but the game apparently does since only keydown skills give a
-	charge integer in the attack packet (DealDamageHandler).
-	* Some skill cast visual effects (like the eye that appears when a player
-	casts Focus) that previously did not show now show.
-	* Full support for Monster Magnet, Chakra, and Dash.
-	* Fixed players that just entered a map seeing full Energy Charge on players
-	with only a partial charge. Energy charge is not stored in Player's
-	activeEffects until it reaches full charge.
-	* Process summon types for summon skills in SkillDataLoader. Full support
-	for summons and puppets.
-
-2011-06-05  GoldenKevin  (revision 37)
-
-	* You may now allocate ability (stat) points and skill points.
-	* Code cleanup - removal of unused imports and variables/function calls.
-
-2011-06-09  GoldenKevin  (revision 38)
-
-	* Full support for minigames (i.e. omok and match cards).
-	* Added new database table for recording minigame scores - update your SQL.
-	* Full support for player trades.
-	* Progress on all sorts of minirooms. Player shops are partially functional
-	and hired merchants are still totally nonfunctional.
-
-2011-06-14  GoldenKevin  (revision 39)
-
-	* No more ranged map entities. Rationale:
-		* Bandwidth of repeated packets used to show and hide entities as they
-		went in and out of range for a player was costlier than sending each
-		player the spawn packet for every entity on the map only once
-		(especially the relatively huge spawn packet for mobs).
-		* Saves memory server side since it no longer has to keep track of every
-		mob/drop/etc. that is in range of a player.
-		* Spares precious server CPU cycles that are used to check if a ranged
-		entity is in range every time either a player moves or that ranged
-		entity moves. No more CPU cycles wasted on costly thread safe operations
-		with each player's "visibleEntities" pool.
-		* Fixes ranged entities disappearing when a player jumps down. Concept
-		of ranged entities became obsolete when players were able to jump down,
-		allowing them to move from one point to another much faster than through
-		any other kind of movement. The speed of the server and network latency
-		became responsible for whether the server could update a client with its
-		new set of visible ranged entities fast enough so that they were spawned
-		before the player could view that part of the map.
-		* Makes GameMap code cleaner, clearer, and concise with less redundancy.
-	* Renamed MapEntity.getCreationMessage to getShowNewSpawnMessage and
-	getShowEntityMessage to getShowExistingSpawnMessage.
-	* Dead monsters are now removed from a player's controlled mobs list
-	* When the entity id counter of a entity pool in a map overflows,
-	EntityPool.nextEntId() skips over entities that are still alive.
-
-2011-06-14  GoldenKevin  (revision 40)
-
-	* Fixed monsters being uncontrolled by a client immediately after the
-	controlling client is echoed back the monster's first move.
-	* Revised various other calls to sendToAll that used the ranged entity
-	no-echo overload pre-r39, so that a message isn't echoed back to the client
-	that sent the message when it is unnecessary and a waste of a bandwidth.
-	* Player's controlled mobs list is now thread safe (possibility of
-	concurrent access since the mob respawn thread and various packet handler
-	threads can access a player at the same time).
-	* GameMap.updateMonsterController() now will actually go through the entire
-	player entity pool to find the most suitable candidate for a mob controller
-	instead of just assigning the job to the first non-hidden player in the pool
-	* An inventory full message is now shown when a player tries to pick up more
-	mesos than technical limits would allow.
-	* Fixed some things regarding monster aggro.
-
-2011-06-25  GoldenKevin  (revision 41)
-
-	* Renamed Timer to Scheduler to avoid any ambiguity/confusion with
-	java.util.Timer (plus, makes auto import much less annoying).
-	* When a player changes channels, their buffs are sent to the receiving
-	channel so that buff expires are synced up and buff effects are recognized.
-	* Summons now are removed from the map when the owner player leaves, and
-	spawn when the owner player enters into a new map.
-	* Fixed integer overflow causing LittleEndianReader.readLong to return
-	incorrect values.
-	* Summons/puppets now removed from map when changing maps/channels, or when
-	logging off. Summons are respawned on the new map if changing maps/channels.
-
-2011-06-27  GoldenKevin  (revision 42)
-
-	* Fixed skill levels and reactor states being skipped when loading from MCDB
-	* Database access rehaul. Added in a connection pool model as a replacement
-	for the thread-local connection model when using the OIO network model
-	(thread per connection), so that the max amount of database connections is
-	not exceeded. All calls to DatabaseConnection.getConnection now have to call
-	DatabaseConnection.returnConnection, even when using thread-local.
-	* Safer database PreparedStatement/ResultSet closing if an exception is
-	thrown during database access.
-	* Redesigned DatabaseConnection now throws out dead connections for both
-	types of connection pooling, so that if a connection goes stale following a
-	time out period, or network paths to the database are momentarily out, then
-	it will try reconnecting by creating a new connection.
-	* DatabaseConnection renamed to DatabaseManager. It is now completely thread
-	safe.
-	* Moved the catching of some SQLExceptions further upstream for performance
-	and logging organization reasons (and to halt further initialization when a
-	database error is encountered at server initialization).
-
-2011-06-29  GoldenKevin  (revision 43)
-
-	* Fixed activated energy charge not showing to other players when changing
-	channels, and partial charge amount not transferring when changing channels.
-	* Added in stubs for inner portal hacking check.
-
-2011-07-01  GoldenKevin  (revision 44)
-
-	* More meaningful exit codes. 2 = properties loading error, 3 = database
-	error, 4 = center server connection error, 5 = server socket binding error.
-	* For the moment, all external-facing servers will die when they lose
-	connection with the center server since currently there is no (automatic)
-	reconnect interface, and thus the servers pretty much become useless.
-	* Packaged libraries have been updated. Rhino has been updated from version
-	1.7R2 to 1.7R3, MySQL Connector/J from 5.1.14 to 5.1.16, and Netty from
-	3.2.3 to 3.2.4. MySQL's .jar and Rhino's .jar files have been recompressed
-	to reduce their size by a few kilobytes, so they do not match the size of
-	the download you would get on their respective websites.
-	* Fixed a potential performance/thread-safety problem in the packet encoder.
-	The ClientSession is now retrieved only once instead of twice to reduce Map
-	lookup costs and to prevent a condition where another thread removes the
-	channel's ClientSession in between the two calls to ChannelLocal.get.
-	* Mini room "map boxes" are now referred to as balloons. Hint box renamed to
-	hint balloon in PortalActions.
-	* Added in support on the login server for updating rankings. Updated SQL.
-
-2011-07-02  GoldenKevin  (revision 45)
-
-	* Major refactoring done to split Player into three specific classes that
-	are each tailored to their server type in an effort to be more memory
-	efficient. No more unused fields in the Player class of any server.
-	* Logical reordering of packages:
-		* Everything from the argonms package is now in argonms.common. All
-		classes and packages from the argonms.character package have been moved
-		to argonms.game.character, and the Player class has been turned into an
-		interface that is now in argonms.common.
-		* Moved package argonms.loading to argonms.common.loading, and moved all
-		of its subpackages and classes with it.
-		* Moved package argonms.net to argonms.common.net, and moved all of its
-		subpackages and classes with it.
-		* Moved package argonms.tools to argonms.common.tools, and moved all of
-		its subpackages and classes with it.
-		* argonms.map and its subpackages and classes have been moved to
-		argonms.game.field (field is used to reduce confusion with the
-		java.util.Map collection). GameMap's class name remains unchanged.
-		* argonms.game.clientcommand renamed to argonms.game.command.
-		* argonms.center.recv.RemoteServerListener moved to argonms.center.
-	* Some refactoring done (including some ugly use of generics and the factory
-	pattern) to eliminate a substantial amount of casts between Clients and
-	Players of different server types in common classes, thus making the code
-	appear 100% type safe.
-	* May have fixed the mistaken auto-dc issue. We now start listening for the
-	ping response before sending the ping, in case the client responds faster
-	than we could set up the heartbeat listener.
-	* Improved wording of some low-level networking logged messages.
-	* Fixed match cards minigame not resetting completely.
-
-2011-07-03  GoldenKevin  (revision 46)
-
-	* Further refactoring done to remove references to argonms.game and its
-	subpackages from code in argonms.common, argonms.login, and argonms.shop.
-	argonms.game.character.inventory renamed argonms.common.character.inventory,
-	argonms.common.Player moved to argonms.common.character.Player, and
-	argonms.game.character.KeyBinding to argonms.common.character.KeyBinding.
-	* New abstract class inherited by LoginCharacter and ShopCharacter to reduce
-	repeated code. CharacterTools includes routines common to all three Player
-	implementations.
-	* Reorganized chaotically ordered imports following the large-scale
-	refactoring of the previous revision.
-	* Shop server now uses ShopWorld instead of LoginWorld for host/port state.
-
-2011-07-03  GoldenKevin  (revision 47)
-
-	* Even more common operations added to CharacterTools.
-	* Fixed NullPointerException when creating a character.
-	* Game server online messages now display the channel id and the world.
-	* argonms.common.inventory.ItemTools -> argonms.game.character.ItemTools
-	* argonms.game.character.skill.PlayerStatusEffectValues renamed to
-	argonms.game.character.PlayerStatusEffectValues.
-	* All packages in argonms.common.loading moved to argonms.game.loading
-	except item and string loading.
-	* Split MonsterStatusEffect enum from MonsterStatusEffectValues class and
-	moved it to argonms.common (dependency for StatusEffectsData, which is in
-	turn a dependency of ItemDataLoader).
-	* Split PlayerStatusEffect enum from PlayerStatusEffectValues class and
-	moved it to argonms.common.character (dependency of StatusEffectsData, which
-	is in turn a dependency of ItemDataLoader).
-	* argonms.game.character.skill.Cooldown
-	and argonms.game.character.skill.SkillEntry to argonms.common.character
-	as they are both needed by the shop server. The rest of the classes in their
-	old package have been moved to argonms.game.character.
-	* argonms.game.character.QuestEntry moved to argonms.common.character as it
-	is needed by the shop server.
-
-2011-07-05  GoldenKevin  (revision 48)
-
-	* Moved methods isFourthJob and isBeginnerSkill from
-	argonms.game.character.SkillTools to argonms.game.character.Skills.
-	* argonms.game.character.Skills renamed to argonms.common.character.Skills
-	as it is a dependency of CommonPackets (needed for shop server).
-	* CommonPackets split into GameCommonPackets, which provides routines that
-	are dependent on game server classes/packages.
-	* Each subpackage of the root argonms package can now be placed in its own
-	.jar file as the center, game, login, and shop subpackages are now all
-	independent of each other. argonms.center, argonms.game, argonms.login, and
-	argonms.shop all depend only on the argonms.common package.
-	* Removed world and channel arguments in the ClientSession constructor as
-	they are not needed.
-
-2011-07-06  GoldenKevin  (revision 49)
-
-	* Included some more SQL files that may need to be executed depending on the
-	type of data loading that the external-facing servers use. None of them are
-	necessary at the moment (except default_shops.sql), but will be needed in
-	the future. argonms.sql moved to the new sql folder in trunk.
-	* argonms.common.character.inventory.InventoryTools.getPersonalSlotMax moved
-	to argonms.game.character.ItemTools since it depends on GameCharacter and
-	SkillDataLoader. ItemTools.getPersonalSlotMax now behaves as expected.
-	* Support for NPC shops. If using KVJ, sql/default_shops.sql must be run.
-	MCDB should be fine without any additional database modifying.
-	* Implemented a proper unique ID generator. Cash shop implementation is
-	still far off, but cash items that you give yourself will now have a proper
-	UID. Please update your database with the updated argonms.sql.
-	* Roger's Apple quest script now checks whether your inventory is full
-	before Roger's Apple is given.
-	* InventoryTools functions deal more gracefully with rechargeable items.
-	* InventoryTools functions now will accept a 4-byte int for quantity, since
-	even though the highest slot max (3000) is way below Short.MAX_VALUE, these
-	functions don't necessarily work on only one slot. Maximum amount of slots
-	per inventory is 255, while the maximum quantity per slot is 3000, so the
-	actual maximum quantity that the functions should accept is 3000*255=765000.
-	* Stubs for NPC item storage.
-	* Fixed clients closing while connecting.
-
-2011-07-13  GoldenKevin  (revision 50)
-
-	* ItemDataLoader's loaded items list is now a set, since it is more
-	"contains"-heavy than add-heavy, and although HashSet is not as fast as
-	ArrayList in adding, HashSet's contains method runs in constant time rather
-	than linear time like ArrayList's.
-	* Merged packages argonms.center.recv and argonms.center.send to
-	argonms.center.net.internal, since their distinction is blurred by the fact
-	that the CenterRemoteInterface classes of argonms.center.send references
-	their respective RemoteCenterPacketProcessor classes.
-	Moved CenterRemoteSession and RemoteServerListener with them.
-	* Reorganized the overloads of CommonPackets.writeItemInfo. The main
-	overload now uses a switch case instead of a series of conditionals.
-	* Added IInventory interface, to be implemented by the old Inventory class,
-	the new StorageInventory class, and a future CashShopInventory class.
-	* Moved the empty argonms.game.field.NpcMiniroom interface into GameClient
-	to be an inner interface.
-	* Trade and shop transactions will now trigger a notification for a
-	completed quest if the quest after gaining a needed item.
-	* Moved storageslots column from characters table to accounts table, since
-	it's account-wide data. Please update your database.
-	* Added a Npc.wz data loader, which currently only loads the storage costs
-	of NPCs. KvjBin needs to be updated to r25 in order to compile Npc.wz. Mcdb
-	currently uses hard coded values until I make a better solution.
-	* Implemented the main parts of NPC storages. Everything except
-	"Arrange Items" is fully working.
-
-2011-07-13  GoldenKevin  (revision 51)
-
-	* Further reorganized packages for consistency. Packages have been created
-	even if they only contain one class or if their fully qualified names are
-	annoyingly long for the sake of logical grouping and hierarchy.
-		* All 2nd level packages now share the same package structures
-		* argonms.common.field created for argonms.common.MonsterStatusEffect
-		(consistency with argonms.game.field)
-		* argonms.game.character.StorageInventory and
-		argonms.game.character.ItemTools moved to
-		argonms.game.character.inventory (consistency with
-		argonms.common.character.inventory)
-		* argonms.game/login/shop.net packages created, along with the internal
-		and external subpackages of net for consistency with argonms.common and
-		argonms.center. Appropriate classes have been moved into them.
-		* argonms.game/login/shop.handler moved to
-		argonms.game/login/shop.net.external
-
-2011-07-13  GoldenKevin  (revision 52)
-
-	* Performed an Eclipse code cleanup. Pretty much removed all unnecessary
-	casts, organized imports, rerouted inherited static field access to base
-	class, and added missing @Override annotations to all overriden methods and
-	implemented methods (only allowed in Java 6, but it's okay since there's
-	quite a lot of Java 5 incompatible code in the source anyway).
-
-2011-07-18  GoldenKevin  (revision 53)
-
-	* Added in MCDB version checks.
-	* Login character uses a single copy of the default key bindings that are to
-	be saved to the database with new characters, since all new characters
-	should share the same initial key map. Should speed up character creation.
-	* InventoryTools.addToInventory updated to use an algorithm that the client
-	would more likely expect. Instead of filling all existing slots of a certain
-	item first and then filling in empty slots from the start of the inventory,
-	it now iterates over the slots in order and fills them, no matter if they're
-	previously partially filled by the same item or empty.
-	* Simplified StorageInventory.remove. The inferred contract of startedItems
-	(based on its name) is that it should not be altered except when opening the
-	storage keeper.
-	* Fixed some strange compile errors around ClientListener instantiations
-	that NetBeans did not catch earlier.
-	* Removed unused methods from BitTools, and renamed it to BitTool.
-	* TimeUtil renamed to TimeTool.
-	* argonms.common.tools renamed to argonms.common.util.
-
-2011-07-18  GoldenKevin  (revision 53)
-
-	* Fixed NullPointerException in InventoryTools.
-
-2011-07-18  GoldenKevin  (revision 54)
-
-	* Renamed MapleAESOFB to MapleAesOfb. Initialisms of three or more letters
-	should be camel case instead of upper case.
-
-2011-07-18  GoldenKevin  (revision 55)
-
-	* Anonymous instances of ClientFactory use the correct argument names.
-	* References to MapleAESOFB now reference MapleAesOfb.
-	* NpcMiniroomHandler no longer prints out debug messages when withdrawing
-	from the storage.
-	* DatabaseManager.ThreadLocalConnections now removes exceptions that have
-	already been thrown from getConnection().
-	* AES-OFB cipher is tested on external facing servers at initialization, so
-	initialization can be stopped if it is discovered that the JCE Unlimited
-	Strength files are not installed. Exception handling in MapleAesOfb is now
-	simpler. AES key should be thread safe, so it is now a static variable that
-	is only instantiated once (instead of one per instance of MapleAesOfb as
-	before). Access to non thread-safe Cipher in MapleAesOfb now is in a
-	synchronized block, as calls to MapleAesOfb.crypt are not necessary
-	thread-safe.
-
-2011-08-13  GoldenKevin  (revision 56)
-
-	* Renamed BitTool to ByteTool since it only performs operations on 8-bit
-	integers.
-	* Greatly simplified and cleaned up MapleAesOfb.getNewIv. The random
-	variable names were really bugging me, so I took the time to decode what the
-	method was doing and reworked it to my standards. Took some hints from Vana
-	to simplify getPacketHeader and checkPacket.
-	* Formatted the key constants in MapleAesOfb to align with each other, even
-	if there was an unnecessary byte cast. Removed the last 10 bytes from
-	"funnyBytes" (now renamed ivKeys) as it was impossible to access them, since
-	the index range was 0 to 255 (the expression used by the only accessors of
-	the array is (byte & 0xFF)).
-	* Temporary fix for a race condition in MapleAesOfb where the IV was not
-	updated before the next send/receive operation started. This caused the
-	client to seemingly drop all packets when at least two packets were sent in
-	parallel, such as the drop expire tasks when there are a large amount of
-	drops made in the exact same time (i.e. when a monster dies) and they all
-	expire at the same time on different threads. Removed the hack in the
-	GameMap.drop overload that accepted a list of drops.
-	* In order to fix the race condition in MapleAesOfb in the most efficient
-	way possible, I had to move the IVs to ClientSession and pass them to
-	MapleAesOfb methods instead of storing them as instance variables. I found a
-	way to use GlobalConstants.MAPLE_VERSION directly instead of keeping a copy
-	of it as MapleAesOfb state. MapleAesOfb is now effectively stateless, so I
-	turned it into a static class.
-	* MapleAesOfb now uses ThreadLocal Ciphers for a thread-safe method of
-	encrypting data using AES, as it is impossible to continue using
-	synchronized Cipher per MapleAesOfb instance since MapleAesOfb is now a
-	static class. Should cut instances of MapleAesOfb by half when using OIO,
-	and cut it to the amount of worker threads when using NIO.
-	* Added !clearmobs and !cleardrops commands. !stat command now sets the EXP
-	to a valid EXP for a particular level when setting or adding levels.
-
-2011-08-14  GoldenKevin  (revision 57)
-
-	* Password hashes and salts are now stored in raw binary in the accounts
-	table. This should reduce the space used for password data in half. Also
-	salt is now a fixed size BINARY instead of VARBINARY, since its size is
-	always 16 bytes, so it will save an extra length byte for each account with
-	a non-null salt. Only disadvantages are more difficult reading (hexadecimal
-	is better suited for reading binary, and raw binary can result in
-	non-printable ASCII chars), and inability to use SHA1 hash generators online
-	to paste for an account using MySQL Query Browser (which is mitigated by the
-	allowance of plaintext in the password field for new accounts. it can still
-	be done by executing the query "UDPATE `accounts` SET `password` = X'hash'",
-	replacing hash with the hexadecimal hash. This works for INSERT INTO too).
-	* Rewrote LoginClient's authentication method. Fixed NullPointerExceptions
-	when a user with a non-SHA512 password and a null salt enters an incorrect
-	password.
-	* TelnetSession updated to support new authentication. Also added a "help"
-	command.
-	* HashFunctions rewritten to reduce instantiation costs (MessageDigest
-	instances are now thread-local) and to support the new password hash format.
-	* Implemented CheatTracker. Replaced all "TODO: hacking"s.
-	* RankingWorker updated to support new banning format.
-
-2011-08-23  GoldenKevin  (revision 58)
-
-	* Rewrote all networking classes to be independent of Netty. I realized the
-	Netty pipeline wasn't flexible enough for me to ensure that messages were
-	being sent in order to the message queue and being sent in order from out of
-	the message queue, so I decided to forgo using the library altogether and
-	write my own server socket code (even writing my own hashed wheel timer for
-	idle checks). Currently only uses NIO for *Listeners and OIO for connectors,
-	but I'll probably support both in both situations later on. May write a NIO2
-	asynchronous IO wrapper as well once Java 7 becomes more widely deployed.
-	* Reorganized all networking classes to be consistent across all protocols
-	used (MapleStory client protocol, ArgonMS interprocess protocol - acceptor,
-	ArgonMS interprocess protocol - connector, and Telnet protocol), so each
-	protocol type has analog classes with each other. *Session instances contain
-	the low level networking socket state (the new Session interface is meant to
-	relate this), while *Interface/*Client instances the higher level
-	non-networking state (all implement the SessionDataModel interface). For
-	acceptors, *Listener instances keep track and create/destroy *Session
-	instances as connections come and go. For connectors, *Session classes have
-	a static connect() method.
-	* Moved Telnet listener package from argonms.common to argonms.center. Split
-	TelnetSession class into TelnetClient to separate socket networking and
-	higher-level protocols (it's not perfect right now and will have to be
-	improved, but it's getting there). Improved the virtual terminal
-	capabilities as well.
-	* Parallel read and writes are now more elegantly handled for ClientSession
-	as an in-house solution is much more flexible (in fact, now we don't even
-	need receive IV locks because it's all done on the Selector loop thread). So
-	far, the performance is looking to be as good as Netty (probably from the
-	directness of the code, being all hard-coded, and the lack of unused and
-	boilerplate code for unneeded features, considering the fact that I'll never
-	match the prowess of these networking experts, especially Trustin Lee. Just
-	watch out for race conditions because I may have missed something.
-	* Amount of external libraries has been reduced to two!
-
-2011-08-23  GoldenKevin  (revision 59)
-
-	* Fixed idle tasks being triggered after a session has closed.
-	* A bit of code cleanup.
-	* Fixed login and game servers disconnecting from center server because of a
-	false ping timeout.
-	* Fixed Center Server always giving a stack trace when a telnet user types
-	EXIT instead of closing their client by other means.
-	* Removed the -c option from !cleardrops and !clearmobs because I think that
-	all encryption concurrency issues are fixed, and it was primarily a
-	debugging tool.
-	* Added SessionCreator interface to relate *Listeners and the *Session
-	classes that have a static connect method.
-	* To remedy the large amount of lines being logged everytime a user
-	disconnects, Session.close now accepts a disconnect reason so that the
-	caller doesn't have to log extra lines with redundant information. This
-	means that some socket read/write/accept/close IOExceptions may be logged at
-	the FINE level, which should be okay because most of them can be ignored.
-	These exceptions are very common as they are received everytime a remote
-	process is killed before its socket can send an EOF and shutdown gracefully.
-	* Only Session.close logs messages with the word "disconnected" now. The
-	wording of the messages of interserver connections and disconnections use
-	the word "link", and do not log the socket address as it is redundant with
-	the "connected" log message in the SessionCreator classes.
-	* Fixed a possible race condition in TelnetSession.processRead.
-
-2011-08-26  GoldenKevin  (revision 60)
-
-	* The nuances of updating and accessing MySQL's user defined variables in
-	the same statement broke RankingWorker because of the join on the accounts
-	table, so I reworked the ordering of the statement a bit (hopefully, future
-	versions of MySQL won't break it again if they start optimizing and
-	evaluating in a different sequence). I moved it to a stored procedure in the
-	SQL file so that it is defined only once. This is beneficial as the
-	statement doesn't have to be transferred from the Login server to the MySQL
-	server ever. Also, it can be executed from anywhere, so if it is desired to
-	refresh the rankings immediately, you do not have to tinker with the Login
-	server.
-	* RankingWorker will no longer check for IP bans, only account bans. Once
-	bans are implemented, GMs, at their discretion, will be able to easily ban
-	any accounts that share recent IPs or MACs in order to get all characters of
-	the user off the rankings and as an unbypassable measure to forbid the user
-	from logging onto any of its other registered accounts (spoofing your MAC or
-	IP won't help if your account is banned!)
-	* Added two stored procedures to the SQL file. `updateranks` will update a
-	particular rank list, specified by its parameters, while `fetchranks` will
-	return a result set of a particular rank list, specified by its parameters.
-	Be sure to execute the new SQL or else your Login server's RankingWorker
-	will spew out errors.
-	* Account name is now set on the Game server.
-	* Fixed exception when player logs off with a summon active.
-	* Fixed quest starting automatically even if user clicked Decline when
-	completing a quest that automatically starts the script of a "next quest".
-	This fixed the starting act of an autostarted quest being performed twice.
-	* Expiration time is now applied to items rewarded from a quest. Although
-	as of the moment, items don't expire (probably will get working on that when
-	writing the cash shop).
-	* Fixed GameCharacter.gainExp overflow. All calls to gainExp and gainMesos
-	are overflow-conscious when sending the gain value.
-	* Fixed ScheduledHashWheelExecutor misbehaving when scheduling without a
-	period (caused it to infinitely reschedule a task). Calling shutdown on it
-	will no longer immediately shut it down, but will only cause the service to
-	stop accepting tasks, as the documentation for ExecutorService states. The
-	service will never die if a task throws an exception. HashedWheelFuture's
-	cancel method now responds to the mayInterruptIfRunning parameter. Fixed a
-	couple of race conditions as well, although most likely not all of them.
-
-2011-09-10  GoldenKevin  (revision 61)
-
-	* All swallowed InterruptedExceptions should now be handled properly.
-	* TelnetSession and ClientSession sendMessages methods tweaked a bit to use
-	one less variable.
-	* Fixed logic errors and simplified code using OrderedQueue.
-	* OrderedQueue.getNextPush() now uses an AtomicInteger so all methods of
-	OrderedQueue are now thread-safe Simplifies TelnetSession somewhat.
-	(ClientSession still needs it under a mutex so that it corresponds with the
-	IV update order, though).
-	* UnorderedQueue class created to be symmetric with OrderedQueue in other
-	Session classes. pop() has been improved from the old sendableMessages() by
-	having it iterate only once through the queue rather than twice (i.e. once
-	in ArrayList's constructor and another in ConcurrentLinkedQueue.removeAll).
-	* Removed redundant passing of world ID in interchannel communications.
-	* InterChannelCommunication is now thread-safe - remote channels can be
-	safely registered while other tasks are being processed.
-	* Changed the log text again for associating internal network servers as I
-	feel it is more symmetrical ([un]registered) and less confusing.
-	* Fixed PlayerLog not properly removing players from the name lookup table.
-	* Fixed login server giving incorrect job rank in character select screen.
-
-2011-09-19  GoldenKevin  (revision 62)
-
-	* Fixed ShopServer class.
-	* Implemented buddy lists.
-	* Fixed packet reading issue when using INTER_CHANNEL_ALL.
-	* Buddy chat now works, as will party and guild chat in the future when they
-	are implemented. Also linked spouse chat handler with the packet processor.
-	* Implemented /whisper and /find client commands.
-	* Changed contract of entries in bans table in database. Entries are removed
-	at login if all of the account's infractions are pardoned or expired. This
-	way, the user won't be banned after every infraction that occurs once they
-	are unbanned. The side effect of this is that pardoning is essentially
-	irreversible once the user logs in for the first time after they are
-	unbanned, unless the bans table is altered. They can still be rebanned,
-	however, if their infractions points goes over the limit again.
-	* Because *Server.initializeData is so heavily IO bound and can run for an
-	indeterminate amount of time, it is executed in a new thread so it does not
-	delay the worker thread pool of RemoteCenterSession. For a single thread
-	worker thread pool, this can make RemoteCenterSession unresponsive to other
-	messages, result in disconnection if initializeData does not complete in 30
-	seconds (idle + ping timeout time).
-	* Fixed Map loading from Kvj files if not using preloadAll.
-
-2011-09-30  GoldenKevin  (revision 63)
-
-	* Hidden players no longer are echoed their text if they send a map chat.
-	It can be misleading if you see it in your chat box yet nobody else does.
-	* Client command syntax standards altered a bit. Heavily influenced by the
-	MySQL syntax pages on the web. All-caps signifies a literal string while
-	lowercase signifies a variable argument. Curly brackets around arguments
-	indicate a required argument while square brackets indicate optional ones.
-	Pipes are used to signify that more than one type of argument can be passed.
-	* Added !who and !uptime commands.
-	* Fixed wrongful auto bans when Improved HP Recovery is leveled up.
-
-2011-09-30  GoldenKevin  (revision 64)
-
-	* Fixed a huge issue in ClientSession.send. The array is now copied before
-	being encrypted. This caused a problem when the array needed to be used
-	again after being sent (e.g. in GameMap.sendToAll with multiple players on
-	map).
-	* Fixed a busy wait in SessionCreator loops (Selector for *Listeners, the
-	read loop for RemoteCenterSession) if we did not receive the amount of bytes
-	we need in one read.
-	* OrderedQueue.pop() tweaked a bit to properly handle integer overflow of
-	the cursors.
-	* MapleAesOfb.getPacketHeader(), MapleAesOfb.getPacketLength(), and
-	argonms.common.util.input.* should use bitwise operations, not arithmetic
-	when working with byte splicing, just to make intentions clearer. Cleanup in
-	some other methods in MapleAesOfb and ByteTool.
-	* MapleAesOfb.getPacketHeader() renamed to makePacketHeader.
-
-2011-10-07  GoldenKevin  (revision 65)
-
-	* Cash weapons now showing properly in character avatars (character select
-	page, 3rd person views from map, smegas, messenger, etc.)
-	* Slightly rewrote visible/masked equips logic in CommonPackets.writeAvatar
-	to use less conditionals.
-	* Fixed map crash when a player set a mastery level for a ranged weapon and
-	they knock-backed a mob.
-	* Fixed self crash when a player has a cash equip. Rings no longer crash,
-	but ring effects still aren't implemented yet.
-	* Added !maxequips, !maxskills, and !maxall commands.
-	* !spawn command updated to support specifying an amount of mobs to spawn.
-	* LittleEndianWriter.writePaddedAsciiString and writeNullTerminatedString
-	will no longer throw NullPointerException.
-
-2011-10-08  GoldenKevin  (revision 66)
-
-	* Fixed logged off buddy not appearing as offline in a player's buddy list
-	if the buddy changed channels at least once since he/she logged on.
-	* Increasing inventory capacity in !maxall command is now made optional
-	since that particular operation is still a work in progress and can result
-	in client crashes if the user overruns his/her inventory.
-	* Improved several scattered database queries/updates by moving
-	prepareStatement calls to outside of a loop if there is one and fixing some
-	resource leaking possibilities. Fixed TelnetClient not loading ban
-	expirations correctly.
-	* Implemented the Personal Info feature (i.e. double click on a character,
-	or right-click a character->Personal Info in game server) and incrementing/
-	decrementing a player's fame. SQL needs to be updated.
-
-2011-10-10  GoldenKevin  (revision 67)
-
-	* Fixed some logic errors on faming.
-	* Fixed shop loading when using default tables without preloading.
-
-2011-10-17  GoldenKevin  (revision 68)
-
-	* Session.close now returns boolean whether the Session was successfully
-	closed or not (usually indicates that it hadn't already been closed before).
-	This isn't so much a new feature since most times we don't care if the
-	Session was closed or not, but makes subclassing easier for a feature that I
-	want to implement in the future.
-	* Eliminated the world, channel instance variables from ClientListener, and
-	the world, channel parameters in ClientFactory. I realized that the only
-	time those values were needed was for constructing GameClient, but we could
-	send those values from the instance variables of WorldChannel to the
-	anonymous class when constructing GameClient, so it became redundant.
-	* ClientListener instantiation moved to init() in LoginServer and ShopServer
-	and the constructor of WorldChannel. WorldChannel instantiations moved out
-	of file IO try-catch block.
-	* Some cleanup in TelnetListener.
-	* Failed channel changes are removed from the queue in WorldChannel.
-
-2011-10-29  GoldenKevin  (revision 69)
-
-	* Simplified and rewrote life movement packet parsing to be more accurate.
-	* Fixed loading character before it is committed when changing channels.
-	This will make changing channels feel slightly slower, but it ensures that
-	the receiving channel loads the correct state. Fixed some functions getting
-	called twice from changing channels.
-
-2011-11-18  GoldenKevin  (revision 70)
-
-	* Further streamlined encryption by simplifying MapleAesOfb.nextIv. No more
-	intermediate step of converting the 4-byte array into a 32-bit integer.
-	* Fixed NullPointerException when a mob is attacked while Blind, Hamstring,
-	or Charge is cast.
-	* Fixed mob debuffs (by player attack, passive, and buff skills) expiring
-	immediately. Fixed skills that freeze the mob. Currently Hamstring and I/L
-	Element Composition work correctly. Implementations for poison, Doom, and
-	the rest of mob debuffs coming soon.
-	* Fixed KvjSkillDataLoader.loadMobSkill.
-	* PlayerSkillEffectsData and MobSkillEffectsData renamed shouldPerform to
-	makeChanceResult (which is what the predecessor from OdinMS was named). Its
-	previous name did not describe its purpose well enough.
-	* GamePackets.writeMonsterData is more accurate.
-	* Skills are now aware of mob's elemental immunity.
-	* Mob's random skills are now applied (GameMovementHandler). Have to test
-	this one though since I have a feeling that my analysis and interpretation
-	is utterly wrong.
-
-2011-11-19  GoldenKevin  (revision 71)
-
-	* Renamed PlayerStatusEffect.STANCE to PlayerStatusEffect.POWER_STANCE.
-	* Fixed anti-cheat false positive when using Energy Charge and it stops you
-	from being knocked-back by a mob (basically the effect of power stance).
-	* Added some more anti-cheat consistency checks for Power Guard, Energy
-	Charge, and Mana Reflection.
-	* Fixed NullPointerException when a mob dies and one of its attackers had
-	already disconnected. I assumed that GameCharacters would be garbage
-	collected immediately after log off, and hence would not linger in weak
-	references once disconnected (in this case, the damages WeakHashMap). Fixed
-	other potential problem with a similar scenario in
-	GameCharacter.getMobDeathHooks().
-	* Fixed potential race conditions/NullPointerExceptions in
-	GameMap.killMonster, GameMap.removeMonster, Mob.wasAttackedBy, and
-	Mob.giveExp. Mob.hurt, Mob.addDeathHook, Mob.died, and
-	Mob.executeDeathHooksNoRewards should now be immune to very rare
-	ConcurrentModificationExceptions.
-	* Added some @Override annotations in GameCharacter to methods that Eclipse
-	strangely missed in r52.
-	* Apparently using Iterator.remove on ConcurrentLinkedQueue.iterator()
-	results in memory leaks. Fixed UnorderedQueue.pop() to exclusively use the
-	safe poll() method and ScheduledHashedWheelExecutor's worker to instead use
-	a Set backed by a ConcurrentHashMap.
-
-2012-01-02  GoldenKevin  (revision 72)
-
-	* Fixed ConcurrentModificationException in !cleardrops and !clearmobs
-	commands.
-	* Reverted a change (r65) that caused undefined behavior when equips
-	inventory has more than 100 slots.
-	* Calling Future.cancel(true), usually through a ScheduledFuture instance,
-	results in the occasional java.nio.channels.ClosedByInterruptExceptions. All
-	calls to cancel now do not attempt to interrupt an executing task to avoid
-	this crashing of communications (which may result in seemingly random
-	disconnections of remote servers).
-	* All threads started by the server now have descriptive names. Added a new
-	ThreadFactory for the scheduled thread pool in Scheduler, used Thread ctor
-	that allows specifying name in the data preloading threads in GameServer,
-	LoginServer, and ShopServer, and ScheduledHashedWheelExecutor's worker.
-	* Command usage syntax revised a bit from MySQL documentation style to POSIX
-	shell style. Any non-literal options ("names of parameters that require
-	substitution by actual values") are in angled brackets. Literals are no
-	longer in all caps, and everything is in lower case. Required options lose
-	the curly brackets. Optional arguments still retain the square brackets.
-	Parentheses should not be treated as literals and are used to disambiguate
-	mutual exclusion situations.
-	* All commands must have a usage string in addition to its help string.
-	Typing --help anywhere in an existing command will print out its usage and
-	help messages rather than execute the command.
-
-2012-01-29  GoldenKevin  (revision 73)
-
-	* Fixed the most common mob and reactor drops not dropping when drop rates
-	were too high (integer overflow).
-
-2012-01-29  GoldenKevin  (revision 74)
+2012-07-14  GoldenKevin  (revision 1)
+
+	* Created /trunk folder to make layout more compliant with SVN best
+	practices.
+
+2010-10-10  GoldenKevin  (revision 2)
+
+	* Initial import, with fully working Map.wz compiling and a fully working
+	sample interpreter for map data.
+
+2010-10-10  GoldenKevin  (revision 3)
+
+	* Modified existing code to add an executable class for KvjInterpreter:
+	kvjinterpreter.WzInterpreter. (MapDataReader, WzInterpreter, DataReader)
+	* Replaced HashMaps in MapleMap with TreeMaps to keep the structures in the
+	order of the keys. Added label to signify start of Footholds and Portals
+	in MapleMap.toString().
+	* Modifed Portal.toString() to only add parenthesis after the target map id
+	(tm) if the target string (tn) was not empty.
+	* Changed LittleEndianReader into an abstract class with two
+	implementations: LittleEndianByteArrayReader for reading a byte array, and
+	LittleEndianFileStreamReader for reading a file input stream.
+	* Fixed problems with LittleEndianReader that were due to discrepancies
+	between the unsigned bytes stored in the files and Java's signed bytes.
+	* Changed the default path constants in the WzCompiler source file.
+
+2010-10-11  GoldenKevin  (revision 4)
+
+	* Modified XmlReader.traverseBlock so that it doesn't skip the first
+	element. This was necessary for the addition of mob compiling. However, it
+	came with a performance penalty and more complex code for map compiling.
+	Now I really need to refactor that huge method.
+	* Renamed Converter.handleSpecial to handleDir. Modified the parameters and
+	return type so the data is written in the method itself and it doesn't
+	return it as a byte array.
+	* Cleaned up MapleMap.toString() in the interpreter. It now prints reactors
+	and life as well.
+	* Added mob compiling and mob interpreting.
+	* Changed the default path (I'm now developing on a Windows environment) and
+	the default wz file to Mob.wz.
+
+2010-10-12  GoldenKevin  (revision 5)
+
+	* Added toString method to kvjinterpreter.map.structure.Reactor
+	* Renamed setTarget method in kvjinterpreter.map.structure.Portal to
+	setTargetName. Modified comments in kvjcompiler.map.structure.Portal.
+	* Added support for reactor compiling.
+
+2010-11-19  GoldenKevin  (revision 6)
+
+	* Complete rewrite of KvjCompiler. Expected behavior has not changed, and
+	generated code should still be identical to previous revisions. Performance
+	has been slightly hampered, as a trade off to simplicity. Code is more
+	object oriented now, and it should make the addition of Item.wz compiling
+	easier, which will break the current one to one file correspondence between
+	the WZ files and the compiled binaries by compiling individual items as
+	different files inside a folder that is named after the XML WZ file that
+	contains the specific item.
+
+2010-11-25  GoldenKevin  (revision 7)
+
+	* Added preliminary Item.wz compiling as well as part of the Kvj parser for
+	Item.wz. Please excuse all the comments in KvjInterpreter regarding items
+	because it still is a work in progress after all.
+
+2011-01-09  GoldenKevin  (revision 8)
+
+	* Replaced references of FileOutputStream with a BufferedOutputStream that
+	uses an underlying FileOutputStream. This should improve performance
+	somewhat for KvjCompiler. Both the log file and the compiled binary files
+	are now outputted with buffered output streams.
+	* Replaced references of FileInputStream with a BufferedInputStream that
+	uses an underlying FileInputStream. This should improve performance somewhat
+	for KvjInterpreter when using kvjinterpreter.LittleEndianFileStreamReader.
+	* Fixed the file names of kvjinterpreter.LittleEndianFileStreamReader and
+	kvjinterpreter.LittleEndianByteArrayReader. The names were previously
+	swapped. Also added a new constructor for
+	kvjinterpreter.LittleEndianByteArrayReader that takes in a File and
+	automatically fills the byte array.
+	* Fixed Item.wz/Pet folder not being automatically created if it did not
+	exist (kvjcompiler.item.ItemConverter).
+	* It's 2011 now people! Added current year on all license headers.
+
+2011-01-09  GoldenKevin  (revision 9)
+
+	* Finished creating the sample interpreter for Item.wz. Unlike previous
+	demos, there is no output and the class ItemConverter is only there to show
+	how you can implement a ItemInformationProvider. You can modify the main
+	method to output data for any item.
+	* Fixed PET_CONSUMABLE_BY not writing the correct integer.
+	* PET_EVOL_AMOUNT is no longer written in the binaries because its
+	redundant. kvjcompiler.item.ItemConverter.getDayByteFromString now returns
+	the java.util.Calendar constants instead of using magic numbers. The
+	constants are equivalent though.
+
+2011-01-10  GoldenKevin  (revision 10)
+
+	* String.wz compiling is now possible and the corresponding interpreter has
+	been released as well.
+
+2011-01-12  GoldenKevin  (revision 11)
+
+	* Added Skill.wz compiling. There are way too many properties to handle, so
+	I won't add a sample interpreter. I think it would be easy enough to make
+	one yourself. Also added a new method to kvyjcompiler.DataType to detect
+	whether a property has two values (isPoint()).
+	* Made the isNumber method from ItemConverter and StringConverter a public
+	static method in kvjcompiler.Converter.
+	* Input and output paths, as well as the WZ file and log file names can now
+	be specified at runtime through arguments. A sample batch file for Windows
+	is included with this update as well as a sample BASH script for Unix-like
+	operating systems. You most likely have to fix the classpath if you are not
+	using NetBeans, as well as the in and out paths that are specified in the
+	batch file variables (I believe it should be KvjCompiler\bin for Eclipse).
+
+2011-01-20  GoldenKevin  (revision 12)
+
+	* Rewrote code for Skill compiling so that the effect codes aren't with of
+	the rest of the Skill codes.
+	* Fixed Skill RANGE being coded as MASTERY.
+	* Item effects are now in the compiled binaries. Just like with Skill
+	compiling, I got lazy with creating an interpreter that reads the effects,
+	but you should get the general idea.
+	* Fixed the batch scripts. They should now print out the correct name of the
+	WZ files currently being compiled.
+
+2011-01-20  GoldenKevin  (revision 13)
+
+	* Fixed repeated Effects constant.
+	* Cleaned up code that I meant to remove last revision.
+
+2011-01-25  GoldenKevin  (revision 14)
+
+	* Cleaned up MobConverter so that unnecessary bytes aren't written.
+	* Somewhat started on Character.wz compiling.
+
+2011-01-29  GoldenKevin  (revision 15)
+
+	* Completed Character.wz compiling support.
+	* Reduced size of Mob data a little bit.
+
+2011-02-19  GoldenKevin  (revision 16)
+
+	* Reduced size of Map data a little bit. Removed SelfDestruct structure of
+	Mobs and replaced it with the selfDestructHp and removeAfter props.
+	* Added drop chances to mob Kvj files by using String.wz/MonsterBook.img
+	Note this probably won't work for any GMS version lower than v0.62.
+
+2011-02-27  GoldenKevin  (revision 17)
+
+	* Fixed Skill.wz compiling.
+
+2011-03-21  GoldenKevin  (revision 18)
+
+	* Reworked argument passing. Now you can specify multiple files to compile
+	without having to re run the program, so your logs will not be overwritten
+	for every WZ file you compile.
+	* Fixed Reactor.wz compiling giving ClassCastException.
+	* Fixed SkillConverter going into an infinite loop.
+	* Fixed MobConverter giving NumberFormatException (does Bodyguard B really
+	need to drain 50000 mp even though players have a max of 30000?)
+	* Some integer properties were reduced in size to further save space.
+	* Added summons to mob skills.
+	* Added a way to add custom monster drops by means of editing
+	DropConverter's source. One day, I may load custom scripts from a file so
+	that you won't have to recompile the converter in order to change custom
+	drops.
+
+2011-04-13  GoldenKevin  (revision 19)
+
+	* Updated status effect stat names to conform to ArgonMS r25.
+
+2011-04-22  GoldenKevin  (revision 20)
+
+	* Readded foothold IDs to Map.wz data.
+	* Updated Linux launcher to support the new argument parsing system
+	introduced in r17.
+	* All files now have updated svn:eol-style and svn:mime-type properties.
+	* Removed KvjInterpreter because it was extremely outdated. You may view the
+	source code of ArgonMS to view an up-to-date implementation of a Kvj parser.
+	* Moved files from KvjCompiler into the root directory now that it is the
+	only project in this repository (since KvjInterpreter is now gone).
+
+2011-04-23  GoldenKevin  (revision 21)
+
+	* Escaped backslashes in CompileAll.bat to fix Windows issues.
+	* Added support for Quest.wz compiling. Expect a lot of updates on this one
+	though because right now, I'm not sure exactly what data the server needs.
+	* Updated the README to reflect on recent (and not-so-recent) changes.
+	* Updated CompileAll.* to include the default classpaths of both Eclipse and
+	NetBeans. The versions of Java on my Linux and Windows boxes do not care if
+	a classpath directory is non-existant, so there's no harm done. If your
+	NetBeans project is named KvjBin and the project directory is set to the SVN
+	root and you compile a dist/KvjBin.jar, or if your Eclipse project project
+	directory is set to the SVN root, you should be able to run the program
+	without modifying the classpath. You may still have to modify the WZ, out,
+	or log paths however.
+	* Various formatting changes to match standards set by ArgonMS. ChangeLog
+	has been renamed to CHANGES and is now formatted according to a 4-space wide
+	tab; @author javadoc tags have been added to each class file; and new lines
+	have been added between license headers and package declarations.
+
+2011-04-24  GoldenKevin  (revision 22)
+
+	* Removed the passing of unnecessary indices to various quest structures.
+	* Quest id is now a 2-byte integer.
+
+2011-04-25  GoldenKevin  (revision 23)
+
+	* Added several bits of quest data that I forgot to parse and write in the
+	past two revisions (jobs, intervals, scripted quest names, minimum pet
+	tameness, minimum mount tameness, required mesos, required world population)
+
+2011-05-05  GoldenKevin  (revision 24)
+
+	* No longer hard code the skills with charge. Instead, make the skill
+	charged if there is a keydown property. This broke earlier revisions of
+	ArgonMS, but ArgonMS r32 will now function correctly for all charged skills.
+
+2011-05-15  GoldenKevin  (revision 25)
+
+	* Quest.wz compiling added to CompileAll scripts.
+	* Removed property for isBuff in SkillConverter. There are better ways of
+	determining if a skill is a buff than by having to update a hardcoded list
+	every version that introduces new skills. Plus it was a waste of space as
+	the majority of skills are buffs, and each buff skill used up one more byte.
+	* Renamed SkillConverter.IS_CHARGED to KEYDOWN, and added PREPARED and
+	KEY_DOWN_END. Two properties that ArgonMS actually needs.
+	* Added in info for summon skills.
+
+2011-07-13  GoldenKevin  (revision 26)
+
+	* Included script names for reactors, in case it may be used in the future.
+	* Npc.wz compiling - currently only extracts the storage deposit and
+	withdrawal fees and gets the script names for NPCs.
+
+2012-01-29  GoldenKevin  (revision 27)
 
 	* Updated copyright years.
 
-2012-03-18  GoldenKevin  (revision 75)
+2012-07-14  GoldenKevin  (revision 28)
 
-	* Made precedent for further party synchronization among center server and
-	game servers of the same world
-	* Renamed the game server's Party class to PartyList because of its
-	parallels with buddy lists
-	* Implemented basic party list creating, disbanding, inviting (and denying),
-	expelling, joining, leaving, and a temporary change leader. More to come
-	* Fixed CommandProcessor copyright year
-	* CommonPackets.VIP_MAPS trimmed to ten NULL_MAPs. I've been tracing code
-	and realized that at most, we only send ten VIP maps, so why do we have an
-	array of fifteen?
-	* Put names to some magic numbers in
-	InterChannelCommunication.sendPrivateChat
+	* Corrected changelog revision numbers after moving / to /trunk.
 
-2012-03-19  GoldenKevin  (revision 76)
+2012-08-09  GoldenKevin  (revision 29)
 
-	* Defensive programming against concurrency errors. This revision introduces
-	fixes for GameCharacter, Inventory, and Mob, which all have methods that
-	could be accessed by more than one worker thread. Right now, they use simple
-	mutex monitors because concurrency is not really an issue for individual
-	players, inventories, and mobs as they don't scale upwards
-	* Renamed MobDeathHook to MobDeathListener and NPC script's endChat to
-	chatEnded to be more consistent with the observer (AKA publish/subscribe)
-	pattern
-	* Began work on PartyMemberListener class for when we need hooks for our
-	party events. Currently no events are fired because I haven't bothered with
-	looking through the source yet...
+	* Added drops for Kerning PQ.
+	* Added opcode that prevents certain mobs from dropping mesos.
+	* Drop rate of Todd's How-to-Hunt mobs is now 80%.
+	* Source code formatting more consistent with other projects.
 
-2012-03-24  GoldenKevin  (revision 77)
+2012-08-10  GoldenKevin  (revision 30)
 
-	* Use ConcurrentMaps in GameCharacter. This actually is less safe against
-	race conditions (e.g. we don't lock while an existing SkillEntry is getting
-	set to a new value and when we send packets with the size of the map
-	followed by an iteration over the map, we can error 38 the client) and has
-	worse performance because we have to instantiate more objects than we need
-	and calling size when writing packets is linear time, but for the
-	GameCharacter class, it's more about preventing complete failure from
-	ConcurrentModificationExceptions than anything else. All assignable
-	variables in GameCharacter are volatile (as opposed to Atomic wrappers),
-	even though we use non-atomic operations like compound assignments which
-	can cause race conditions. We don't mind if returned values are a few ticks
-	old because we don't have high concurrency requests from a single client, a
-	few timers, and the map, so there will probably be no visible problems
-	anyway. questSubscriptions has not been touched because several operations
-	that modify it cannot be done atomically. I found that it is better for
-	minigameStats to continue using an EnumMap rather than a ConcurrentHashMap
-	just for performance reasons. All of these are accessible only in the
-	GameCharacter class anyway, and the main point of this update was just to
-	get rid of synchronization outside of the GameCharacter class.
-	* GameCharacter.setMinigamePoints turned into incrementMinigamePoints. This
-	is actually a bit safer with regards to race conditions, plus it simplifies
-	Minigame.endGame. AtomicInteger is now used for the actual stat values
-	because they both allow us to get rid of all synchronization in the
-	individual stat map for every game, as we can use a mutable integer wrapper
-	and not have to deal with mutator methods in the game stat map.
-	* Fixed up weird mob EXP. Also fixed some race conditions while I was at it.
+	* Field limit is now included with compiled map files.
 
-2012-04-05  GoldenKevin  (revision 78)
+2012-08-21  GoldenKevin  (revision 31)
 
-	* Database changes
-		* We don't actually reference the symbols for our InnoDB foreign keys
-		(constraints), so don't worry about them in our .sql file and just let
-		MySQL name them with its default conventions. Let MySQL use the default
-		generated names for keys too because they are sufficient for us (we can
-		assume the names of the keys because there will be no conflicts with
-		other same-named keys in a new table).
-		* Added a few more keys (indices) in strategic places to speed up some
-		lookups and removed a few unnecessary ones that would waste disk space
-		and processing time during row insertion and deletion.
-		* macbans table uses a surrogate primary key rather than a composite
-		natural key to be more consistent with other tables.
-		* Added a parties table.
+	* Added full support for upgrade scrolls.
 
-2012-04-14  GoldenKevin  (revision 79)
+2012-08-22  GoldenKevin  (revision 32)
 
-	* Fixed potential CancelledKeyExceptions in *Session classes.
-	* Rewrote the channel change/log off triggers for GameCharacter. Fixed some
-	methods being called twice when changing channels.
-	* Added party bonus to monster EXP. Any member who is five levels below the
-	monster's level or five levels below the lowest leveled attacker will be
-	given a share of the EXP if he did at least one damage to the mob.
-	* Fixed bug when a party member leaves the party and was the only member in
-	his channel.
-	* Proper packet for party leader change. Made some fixes to the other party
-	packets as well.
-	* A party is unloaded when all its members become offline or when it is
-	disbanded. A party is loaded when the first member becomes online or when it
-	is created.
-	* Implemented cross-channel parties. Player's party data is now saved when
-	logging off, and is loaded when logging in.
-	* Party members are notified when a member changes maps, changes levels,
-	changes jobs, or changes HP.
-	* Renamed some InterChannelCommunications methods to be more consistent.
+	* Added additional data for ship maps.
 
-2012-04-16  GoldenKevin  (revision 80)
+2012-08-22  GoldenKevin  (revision 33)
 
-	* Phase one of GameCharacter hierarchy realignment. MapEntity is now an
-	interface that GameCharacter implements so that GameCharacter is free to
-	inherit Player (or one of its subclasses).
+	* Fixed syntax error in Ship.
+	* Fixed incorrect opcodes used in CharacterConverter.
 
-2012-04-16  GoldenKevin  (revision 81)
+2012-09-17  GoldenKevin  (revision 34)
 
-	* Eliminated argonms.common.character.Player interface, replaced by
-	argonms.common.character.Player.LimitedActionCharacter and
-	argonms.common.character.Player.CharacterTools refactored into instance
-	methods. LoggedInPlayer is now in its own file and is now an abstract class
-	that inherits Player.
-	* GameCharacter and ShopCharacter inherit LoggedInPlayer instead of just
-	implementing it. LoginCharacter inherits the new Player class. Renamed
-	instance variables in Player to be consistent with duplicate variables from
-	GameCharacter and they now have protected access. Removed these duplicate
-	variables from GameCharacter, as well as duplicate accessor and mutator
-	methods.
+	* Added custom drops for 2nd job advancement challenges.
+	* The compiled Character.wz/Face.kvj and Character.wz/Hair.kvj now list the
+	IDs of every eye style and hair style the client supports.
 
-2012-04-22  GoldenKevin  (revision 82)
+2012-09-23  GoldenKevin  (revision 35)
 
-	* Every party member in the same channel shares a single PartyList instance.
-	This should reduce RAM usage and bandwidth between the center server and the
-	game servers, but increases complexity somewhat and may raise a few gotchas
-	revolving around sharing an instance between more than one player.
-	* Rearranged some packets and renamed several party related things to be
-	more consistent and to make their meanings clearer.
+	* Fixed compiling of point data types in SkillConverter.
 
-2012-04-27  GoldenKevin  (revision 83)
+2012-09-23  GoldenKevin  (revision 36)
 
-	* Removed reference to argonms.game in GameCenterPacketProcessor.
-	* Fixed disbandment of party when a member is offline.
-	* Fixed mastery sometimes causing error 5 to other players in map (and
-	giving wrong color based on skill level).
-	* Fixed mob item drops can be leeched by anyone. Still need a solution for
-	reactor drops.
+	* trunk/CHANGES now uses native EOL style and has mime-type text/plain.
 
-2012-05-12  GoldenKevin  (revision 84)
+2012-09-26  GoldenKevin  (revision 37)
 
-	* New method for distributing mob EXP. This finally refactors that huge,
-	ugly Mob.giveExp method into more manageable chunks. If a party attacks a
-	mob and that mob has another attacker outside the party, the distribution
-	makes a bit more sense (before, the party would get the mob's full EXP
-	instead of only a share based on how much damage it did). It is somewhat
-	more object oriented now, although not as much as I would have liked.
-	* Autoban detects when client wants to control a mob that it did not aggro.
+	* Henesys PQ mobs do not drop mesos.
+	* MobConverter writes probabilities for LOSE_ITEM.
+	* MobConverter writes the animation effect of self destructing mobs.
+	* MobConverter writes the "drop item period" of a mob.
 
-2012-05-20  GoldenKevin  (revision 85)
+2012-11-10  GoldenKevin  (revision 38)
 
-	* Fixed game server not removing party when last online member logs off
-	* Fixed expelled party member or leaver remaining in party list if he was
-	the last online member and another member logged on before he was saved to
-	the database
-	* Disabled banning system for now until I find a better solution to detect
-	excessive amounts of suspicious activity that could be from packet editing
+	* Imported LightPepsi's MonsterDropCreator.getDropsNotInMonsterBook into
+	DropConverter.populateCustomDrops().
+	* Tidied up whitespace and documentation in DropConverter.
+	* Sap of Ancient Tree now has a four percent chance of dropping.
+	* Fixed buff items lasting a thousand times longer than they should.
+	* Support for specifying custom quest mob drops in DropConverter and
+	MobConverter.
 
-2012-06-09  GoldenKevin  (revision 86)
+2013-02-04  GoldenKevin  (revision 39)
 
-	* Fixed party EXP bug where you got 5% bonus EXP for being in a party of one
+	* Fixed CustomDropsMap overwriting drops from WZ files.
+	* Implemented loading custom drops from text files.
 
-2012-06-20  GoldenKevin  (revision 87)
+2013-02-05  GoldenKevin  (revision 40)
 
-	* SocketChannel should already be closed before CloseListener.closed is
-	called, so there is no need to cancel the associated SelectionKey.
-	* Synchronize closing of a socket channel (which in turn closes its
-	associated selection key) with any operations that require the key be valid,
-	to avoid several race conditions.
+	* Added Maple item drops to custom_drops.txt.
+	* Added Black Tube and Emergency Rescue Tube drops to custom_drops.txt.
+	* Added Broken Mirror Glass to quest_drops.txt.
 
-2012-06-20  GoldenKevin  (revision 88)
-
-	* Rearranged ClientSession.send(byte[]) so that length of a message won't
-	have any effect on the queue insert number of the message and instead is
-	mostly dependent on when the method was called.
-	* Let players linger in their channel and map after client disconnection
-	until all the remaining messages read from the client are processed. Should
-	fix problems with null characters when a client disconnects while it still
-	has queued messages.
-
-2012-06-20  GoldenKevin  (revision 89)
-
-	* Use Connection.isValid(timeout) instead of Connection.prepareStatement
-	("/* ping */ SELECT 1") for DatabaseManager.connectionCheck since MySQL
-	Connector/J implements both pretty much the same (except it returns false
-	instead of throwing an exception if the connection is closed and doesn't
-	instantiate a "fakeSelectOneResultSet") in a more readable and concise
-	manner. (cf. com.mysql.jdbc.ConnectionImpl.pingInternal(boolean
-	checkForClosedConnection, int timeoutMillis), com.mysql.jdbc.JDBC4Connection
-	.isValid(int timeout), com.mysql.jdbc.ConnectionImpl.ping(), and com.mysql
-	.jdbc.StatementImpl.doPingInstead()). The Java 6 only argument is moot since
-	we use other Java 6 APIs.
-	* argonms.common.util.DatabaseManager.CachedConnectionPool.getConnection()
-	throws out dead connections and tries the next one until there are none left
-	rather than immediately replacing them with fresh connections. Only if there
-	are no (valid) connections does it create new ones. This should clear out
-	all dead connections in a single call to DatabaseManager.getConnection()
-	since the least recently used connections are the ones that time out first
-	and are also the first to be connection checked. The only downside is that
-	the pool has to throw out all the connections in the cache before we realize
-	that the database server is offline.
-
-2012-06-20  GoldenKevin  (revision 90)
-
-	* Fixed deadlock in RemoteCenterSession. Reverted changes to that file from
-	r87.
-	* DatabaseManager.ThreadLocalConnections.getConnection() now always throws
-	an SQLException if the database server cannot be reached rather than return
-	null in some cases. Refactored out connectionCheck since it's body is a
-	single line.
-
-2012-06-20  GoldenKevin  (revision 91)
-
-	* Added all server side NPC scripts for NPCs on Maple Island. The eclectic
-	text is meant to be faithful to GMS v0.62 yet free of blatant misspellings
-	and broken English.
-	* Most commonly called methods outside of NpcConversationActions now have
-	aliases in that class or its super class. The idea is to minimize the scope
-	of scripts so that refactoring the sources will have less pitfalls.
-
-2012-06-22  GoldenKevin  (revision 92)
-
-	* All Lith Harbor NPCs (except Chef, since I can't find any reliable script
-	for him, and Duey and EXP Gachapon because they're too complicated at the
-	moment) are now scripted.
-	* argon.sql updated.
-
-2012-06-23  GoldenKevin  (revision 93)
-
-	* Fixed improper usage of Rhino Context instances.
-	* Packaged libraries have been updated. Rhino has been updated from version
-	1.7R3 to 1.7R4 and MySQL Connector/J from 5.1.16 to 5.1.20. MySQL's .jar and
-	Rhino's .jar files have been recompressed to reduce their size by a few
-	kilobytes, so they do not match the size of the download you would get on
-	their respective websites.
-
-2012-06-28  GoldenKevin  (revision 94)
-
-	* Enabled JavaScript version 1.7 features in Rhino.
-	* var declarations are replaced with let in all scripts since its behavior
-	is more akin to local variable declarations in Java.
-	* Don't let scripts capture continuations if client disconnected.
-
-2012-06-30  GoldenKevin  (revision 95)
-
-	* Scripts for Henesys area NPCs with NPC IDs in the 101200x range.
-
-2012-07-04  GoldenKevin  (revision 96)
-
-	* Scripts for Henesys area NPCs with NPC IDs < 9102100 and NPC ID 9200100
-	(bowman job advancement, Henesys PQ, Henesys beauty shops, etc.).
-	* Added in stub files for unimplemented Lith Harbor scripted NPCs so I don't
-	forget about them in the future.
-
-2012-07-08  GoldenKevin  (revision 97)
-
-	* Renamed script API isQuestFinished to isQuestCompleted.
-	* Fixed NullPointerException in QuestChecks.hasPet.
-	* Finished all NPC scripts for Henesys area.
-
-2012-07-10  GoldenKevin  (revision 98)
-
-	* Fixed Athena Pierce script.
-	* Added Ellinia NPC scripts in the 103200x range.
-
-2012-07-11  GoldenKevin  (revision 99)
-
-	* Fixed problems in InventoryTools with regards to equipped inventory
-	handling.
-	* Finished Ellinia area scripts (or at least created stubs for them).
-
-2012-07-11  GoldenKevin  (revision 100)
-
-	* Fixed messed up reactor drop source position.
-	* Reactor and NPC scripts now are named after the script name fields in
-	their respective data files instead of their numeric ID. MCBB users must
-	execute default_reactor_scripts.sql and default_npc_scripts.sql.
-
-2012-07-11  GoldenKevin  (revision 101)
-
-	* Fixed player NPC script.
-
-2012-07-14  GoldenKevin  (revision 102)
-
-	* Inventory.increaseCapacity, StorageInventory.increaseCapacity, and
-	BuddyList.increaseCapacity nows clip capacities to <= 0xFF. Capacities no
-	longer overflow when increased beyond max.
-	* Proper packets for increasing inventory capacity. Thanks Vana!
-	* Removed null.js. Apparently Duey is not scripted, but instead is
-	hardcoded in like shops and storages.
-	* Changed sourceName for scripts again. They should be the relative path to
-	the executed script file, with the scripts folder as the root directory.
-
-2012-07-14  GoldenKevin  (revision 103)
-
-	* Implemented all Perion area NPCs.
-
-2012-07-14  GoldenKevin  (revision 104)
-
-	* Unignore Eclipse project files outside of trunk since Eclipse project
-	should reside in trunk only.
-
-2012-07-16  GoldenKevin  (revision 105)
-
-	* Implemented all Kerning City NPCs in the 10520xx range.
-	* Made unscripted NPC notice more legible.
-
-2012-07-18  GoldenKevin  (revision 106)
-
-	* Implemented Kerning City beauty NPCs and Monster Carnival NPC.
-
-2012-07-20  GoldenKevin  (revision 107)
-
-	* Reverted r87's synchronized valid checks and socket closing. No need to
-	make read and writes contested just to prevent such a rare case that has no
-	side effects.
-	* SessionCreator.shutdown rewritten to resemble Session.close.
-	* Added shutdown command, though not yet fully implemented.
-	* Fixed channel port change.
-
-2012-07-21  GoldenKevin  (revision 108)
-
-	* Fixed NullPointerException when shutting down server.
-	* Fixed percentage based potions.
-	* Implemented Kerning City Party Quest NPCs.
-
-2012-07-22  GoldenKevin  (revision 109)
-
-	* Implemented or added stubs for remaining Kerning City area NPCs.
-	* LoginServer loads for shutdown game servers are reset to 0.
-
-2012-08-02  GoldenKevin  (revision 110)
-
-	* Began a refactor of scripting APIs.
-	* Fixed syntax error in Bell's script.
-
-2012-08-02  GoldenKevin  (revision 111)
-
-	* Started work on events.
-	* Finished script refactor started last revision.
-	* Fixed some more of improper usage of Rhino with regards to passing Java
-	objects into a script's scope.
-
-2012-08-09  GoldenKevin  (revision 112)
-
-	* Fixed persistent events loading before Scheduler was enabled.
-	* Added more features to script bindings and to EventManipulator. init()
-	function in event scripts now accept an attachment.
-	* Added EventManipulator field in GameCharacter.
-	* One of Cloto's lines is more GMS-like now.
-
-2012-08-09  GoldenKevin  (revision 113)
-
-	* Updated supported Kvj format to r29.
-	* Kerning City event script is fully implemented. Now I just have to
-	implement blocked portals so players can't skip stages.
-	* Fixed potential memory leak in ScriptPlayer.
-	* EventManipulator methods relating to player and party are now used. Still
-	have not added hooks for mobs.
-
-2012-08-09  GoldenKevin  (revision 114)
-
-	* Cleaned up Cloto's script. kpq.js renamed to party1.js.
-	* Fixed NullPointerException when Kerning PQ times out, error when any party
-	member but the leader leaves while in the PQ, and TypeError when a party
-	tries entering when another party is still inside.
-	* Temporary implementation for portal blocking in Kerning PQ.
-
-2012-08-10  GoldenKevin  (revision 115)
-
-	* Added NPCs for John's jump quests and Chrishrama in Sleepywood.
-
-2012-08-10  GoldenKevin  (revision 116)
-
-	* Added rest of Sleepywood area NPCs.
-
-2012-08-10  GoldenKevin  (revision 117)
-
-	* Updated supported Kvj format to r30.
-	* Implemented chairs
-	* Implemented EXP loss.
-
-2012-08-16  GoldenKevin  (revision 118)
-
-	* Disabled Kerning PQ debugging by default. Debug messages are now a bit
-	more informative.
-	* Fixed exception when giving prize in Kerning PQ.
-	* Reverse engineered portal blocked packet for Kerning PQ.
-	* Implemented Free Market portals.
-
-2012-08-19  GoldenKevin  (revision 119)
-
-	* Inventory item loading performance substantially improved for a large
-	database (but will take longer to save and will take more space on disk).
-	Ban checking on login and highest party ID loading on game server
-	initialization marginally improved with larger tables.
-	* A bit more consistency in column definitions in argon.sql. Maximum width
-	of integral datatype is that of the maximum value of the datatype, with
-	space for a negative sign if the datatype is not unsigned, unless we know
-	that the value of that column never exceeds some other width (i.e. 1 for
-	boolean values in tinyint).
-	* UniqueIdGenerator now does postincrement instead of preincrement, so value
-	of `uniqueid`.`nextuid` actually is the next UID. We no longer skips UID 1.
-	* Quest reward items without expirations will not expire immediately.
-
-2012-08-20  GoldenKevin  (revision 120)
-
-	* EventManipulator.partyDisbanded and partyMemberRemoved combined into
-	partyMemberDischarged(partyId, playerId). Scripts that care about party
-	events (in the event-driven programming sense) should have enough state to
-	distinguish the two cases.
-	* events/party1.js script rewritten to maximize code reuse and fix some
-	bugs. npcs/party1_play.js script only gives EXP only to party members that
-	are still participating in the PQ and only gives one pass per member in the
-	first stage.
-	* Implemented return scrolls.
-	* Added a bit of consistency when using InventoryTools.UpdatedSlots and
-	GameCharacter.itemCountChanged(itemId).
-
-2012-08-22  GoldenKevin  (revision 121)
-
-	* Updated supported Kvj format to r31.
-	* Implemented equip scrolling.
-	* InventoryTools.randomizeStats uses more accurate stat ranges.
-	* Hands and level field of equips are treated as equals with other equip
-	stats. More consistency among equip field access and mutating.
-
-2012-08-22  GoldenKevin  (revision 122)
-
-	* Rewrote EventManipulator. Rather than pass a bunch of IDs to the script,
-	it now instantiates script binding wrappers for the actual entities.
-	* Kerning PQ now retains timer for all stages.
-	* Use Context.javaToJS instead of Context.toObject. Equivalent Java types
-	are now converted to JavaScript primitives instead of being passed as either
-	JavaScript wrapper objects or native JavaScipt objects of Java wrapper
-	objects. Fixes a lot of issues with event variables, booleans, and null.
-	* EventManipulator allows access to event variables from Java code without
-	having to deal with JavaScript wrapping.
-	* Enable Rhino optimization of all scripts besides NPC scripts.
-
-2012-08-22  GoldenKevin  (revision 123)
-
-	* Updated supported Kvj format to r32.
-	* Greater flexibility with time zones. Expiration dates, clocks, and
-	miscellaneous in-game output are no longer bound to the server's default
-	time zone. Note that this doesn't affect the output of log messages nor does
-	it affect the time zone of JavaScipt Date objects.
-	* Added script for ship between Ellinia and Orbis. Although it works, I will
-	not enable it by default in game*.properties until I finish implementing all
-	Victoria Island NPCs and then move on to Ossyria.
-	* ScheduledHashWheelExecutor.HashedWheelFuture.get() throws
-	ExecutionException for all submitted tasks that are ended early because of
-	an exception.
-
-2012-08-22  GoldenKevin  (revision 124)
-
-	* Fixed NullPointerException in portal and reactor scripts if player is not
-	a member of a party.
-	* Scrolling equips for HP and MP no longer clips remaining HP and MP to the
-	max HP/MP values that have the equip's bonus HP/MP subtracted from them.
-	* Unequipping an item that has an HP bonus will now update the client's
-	remaining HP bar if remaining HP is clipped.
-	* GameCharacter.equipChanged called for equipped items that are replaced by
-	another equip item of the some category.
-	* Fixed packet for cursed scrolled equips.
-	* Scroll no longer consumed if equip has no upgrade slots.
-	* Fixed player's remaining HP/MP being clipped to base max HP/MP on login.
-	Don't clip remaining HP/MP until after equip max HP/MP bonuses are applied.
-
-2012-08-23  GoldenKevin  (revision 125)
-
-	* Removed unused PartyMemberListener class.
-	* Fixed any unsorted import blocks.
-	* Updated switch-cases to use a consistent formatting style.
-	* Added private constructors and final modifier to utility classes.
-	* Added final modifier to instance variables where appropriate.
-	* Removed Game prefix from names of game server handler utility classes.
-
-2012-08-23  GoldenKevin  (revision 126)
-
-	* Some cleanup of changes made in the last revision.
-	* Added interface for login server features that have been implemented but
-	unused. The login.properties file customizes these features.
-
-2012-08-23  GoldenKevin  (revision 127)
-
-	* Removed balloon message debug statement in LoginServer.
-	* MapleAesOfb class renamed to ClientEncryption.
-	* Removed current directory from classpath in *.bat and *.sh scripts.
-	* Packaged Bouncy Castle 1.47 provider for JDK 1.5 - JDK 1.7.
-	* Bouncy Castle lightweight API is now used instead of JCE for AES
-	encryption. Removed illegal key size checks in server inits as we are no
-	longer dependent on JCE unlimited strength jurisdiction files.
-	* Use Bouncy Castle instead of JCA for SHA digest in HashFunctions class.
-
-2012-08-24  GoldenKevin  (revision 128)
-
-	* Renamed ClientEncryption.aesCrypt to aesOfbCrypt.
-	* Split a loop of aesOfbCrypt into several loops in order to reduce number
-	of conditional checks and make the routine marginally faster. Also removed
-	unnecessary try-catch block and Logger.
-
-2012-08-27  GoldenKevin  (revision 129)
-
-	* Miscellaneous edits to ClientEncryption. checkPacket is now works properly
-	for MAPLE_VERSIONs greater than 127.
-	* Better understanding of magic numbers in ClientSession.sendInitPacket().
-	* Removed dependency on java.awt.Rectangle in npcs/party1_play.js.
-	* events/ship_ossyria.js spawns Balrog mobs when invasion ships are spawned.
-
-2012-08-31  GoldenKevin  (revision 130)
-
-	* Buffs are canceled when a player dies and respawns. Hide no longer
-	glitches in such a scenario.
-	* Eliminated any array copying and division in loops in HexTools methods.
-	* Replaced getLt() and getRb() methods from PlayerSkillEffectsData and
-	MobSkillEffectsData with a getBoundingBox method.
-	* Moved Poison Mist specific routines from GameMap.spawnMist.
-	* Started implementing Poison Mist, but it still does not work correctly.
-
-2012-09-04  GoldenKevin  (revision 131)
-
-	* Rearranged argon.sql to highlight dependence relationships among tables.
-	Previously was inconsistent - most table declarations were in alphabetical
-	order but some were rearranged due to foreign key constraint failures on
-	script execution.
-	* Tables in argon.sql are deleted in the reverse order that they were
-	created to avoid foreign key constraint failures.
-	* Removed all implicit/default modifiers in argon.sql to make the script
-	more concise (i.e. DEFAULT NULL and DEFAULT CHARSET=latin1). Although InnoDB
-	is now default in MySQL 5.5, I want to make sure that the tables support
-	transactions even if the script is executed on a server with an older MySQL,
-	so the engine is still explicit.
-	* Same treatment for argon.sql is given to other files in /trunk/sql/*.sql.
-	default_monster_drops.sql and default_shops.sql files are replaced rather
-	than modified because their diffs would be bigger than the files themselves.
-	* `infractions`.`assignertype` is now NOT NULL.
-	* `inventoryitems`.`uniqueid` no longer unsigned because server does not
-	store 64-bit unsigned unique IDs. `inventoryitems`.`expiredate` and
-	`expiredate` and `receivedate` in `infractions` no longer unsigned because
-	timestamps are stored as 64-bit signed value on the server.
-	* Arbitrary line breaks in queries that strictly adhere to 80 characters per
-	line replaced with ones with looser width limits and group related parts in
-	a line. 80 character width is obsolete and broken up strings make less sense
-	after a lot of refactoring.
-
-2012-09-05  GoldenKevin  (revision 132)
-
-	* Fixed formatting of .sql scripts that I missed last revision.
-	* Fixed client never fully dissociating if an exception occurred while
-	processing a packet.
-	* PreparedStatement.executeUpdate() in loops has been replaced with
-	addBatch() and executeBatch() wherever possible.
-
-2012-09-05  GoldenKevin  (revision 133)
-
-	* GameCharacter.updateDbQuests executes mob progress batch once rather than
-	for every quest. Refactored generated keys fetching to remove a try-catch.
-	* GameCharacter.updateDbQuests only inserts mob progress for quests that are
-	still in progress. Server never needs to deal with mob kill count for
-	completed and forfeited quests. Speeds up the insertion of completed and
-	forfeited quests since those can now be batched. GameCharacter.loadPlayer
-	avoids an unnecessary mob progress query for completed quests.
-	* Don't delete expired things from database in GameCharacter.loadPlayer.
-	Defer deletions to when the character is saved. Expired bans are removed for
-	a client after loading them during login only because the login server does
-	not have a central routine for saving client data before control is
-	transferred to the game server.
-	* Fixed infraction spam when changing channels while hide is disabled and
-	is then enabled upon channel enter.
-
-2012-09-10  GoldenKevin  (revision 134)
-
-	* Removed a conditional in GameMap.spawnEntity and spawnExistingEntity.
-	* Map players now see when a player updates his skin color, hair, face.
-	* Simplified GameCenterPacketProcessor.processPartyFetchList.
-	* Full support of Maple Messenger chat rooms.
-
-2012-09-16  GoldenKevin  (revision 135)
-
-	* MapFactory is now thread safe.
-	* Added pirate job advancement NPC.
-	* Added scripts to get players out of 2nd job advancement challenge maps.
-	* Each player doing a 2nd job advancement challenge now gets his own
-	instance of the map. events/change_job.js handles this for us.
-
-2012-09-16  GoldenKevin  (revision 136)
-
-	* Refactoring to reduce nesting in InterChannelCommunication and
-	GameCenterPacketProcessor. Only methods in that class get large enough that
-	early out (return in methods, continue in loops) can significantly reduce
-	the maximum level of indentation compared to single-entry single-exit.
-	* Calls to CenterServer.getAllServersOfWorld in GameCenterPacketProcessor
-	moved to outer loop whenever applicable because repeatedly calling that in
-	an inner loop is more expensive than getting the other Collection.
-
-2012-09-17  GoldenKevin  (revision 137)
-
-	* Support for the newest Kvj format.
-	* Stubs for remaining Henesys area NPCs.
-	* Stubs for several event NPCs.
-	* Added Florina Beach NPC.
-	* Added NimaKIN and KIN NPCs.
-	* Fixed any possibility of client crash when choosing new eyes or hair.
-
-2012-09-17  GoldenKevin  (revision 138)
-
-	* Added remaining Nautilus Harbor NPCs to complete Victoria Island NPC
-	scripts.
-
-2012-09-18  GoldenKevin  (revision 139)
-
-	* Updated some NPC scripts after consulting DelphiMS scripts.
-	* Updated several scripts so they are based on the more accurate Vana
-	scripts rather than those from KiniroMS.
-	* Updated some scripts that multiple NPCs share.
-	* Added a missing Maple Island script. Peter (NPC 2002) is also in the WZ
-	files, but v0.62 doesn't have Mushroom Town so I didn't include him.
-	* Vana consulted scripts have their documentation changed to read r3171
-	instead of r2111 if applicable (cny no longer exist in r3171, so it is left
-	as r2111).
-
-2012-09-18  GoldenKevin  (revision 140)
-
-	* Fixed begin_jp1.js.
-	* Script formatting changes I missed last revision.
-
-2012-09-19  GoldenKevin  (revision 141)
-
-	* Revisited ScheduledHashedWheelExecutor. Rewrote all thread-unsafe code,
-	corrected the broken invokeAll and invokeAny methods, and cleaned up.
-
-2012-09-20  GoldenKevin  (revision 142)
-
-	* ScheduledHashedWheelExecutor now will never misplace a task into the wrong
-	bucket. It required moving three division operations, a (fairly predictable)
-	branch, and a few instances of addition/subtraction and casting into a mutex
-	block shared with the worker thread, but avoiding reschedules should offset
-	any performance losses.
-
-2012-09-22  GoldenKevin  (revision 143)
-
-	* Support for scrolling messages in game server.
-	* Added !heal command.
-	* Fixed some misuse of Player.getMaxHp(), GameCharacter.getCurrentMaxHp(),
-	Player.getMaxMp(), and GameCharacter.getCurrentMaxHp().
-
-2012-09-23  GoldenKevin  (revision 144)
-
-	* Rearranged DealDamageHandler.handleRangedAttack and handleMagicAttack to
-	minimize latency between a player's attack and its reflection on the screens
-	of other players in the map.
-	* Stubs for Happyville NPCs.
-	* More consistent TODO descriptions in NPC scripts.
-	* npcs/begin7.js is now based on the corresponding Vana script.
-
-2012-09-25  GoldenKevin  (revision 145)
-
-	* Optimized NPC scripts with long sequences of sayNexts.
-	* Fixed NPC script bug when sayNext, say, and sayNext were called right
-	after another in that very order.
-	* Added askBoxText public function to ScriptNpc.
-	* No need for Mob.controller to be a WeakReference since we null the
-	reference whenever the controlling player leaves the map.
-
-2012-09-26  GoldenKevin  (revision 146)
-
-	* Fixed item based reactors.
-	* Started work on Henesys PQ. Added all NPC scripts and added event script.
-	No event code handles Moon Bunny getting hurt yet and no rice cakes are
-	dropped.
-	* Updated Henesys PQ scripts to be more GMS-like.
-	* Kerning PQ map config initialization is done before party is warped in.
-
-2012-09-30  GoldenKevin  (revision 147)
-
-	* Support for the newest Kvj format.
-	* Fixed events/ship_ossyria.js not clearing Balrogs before the start of its
-	next run.
-	* Growlie now warps party out in the same conversation that it clears the
-	stage. The leader does not have to click him again after clearing.
-	* Fixed Henesys PQ event script not destroying itself when exiting from Pig
-	Town.
-	* Fixed Moon Bunny spawning in the wrong direction in Henesys PQ.
-	* Henesys PQ scripts are functionally complete - implemented rice cake drops
-	and Moon Bunny getting hurt.
-	* Ariant Coliseum bomb mob actually explodes. All mobs that self destruct on
-	a timer rather than at a certain HP are now supported.
-
-2012-09-30  GoldenKevin  (revision 148)
-
-	* Fixed quest mob progress going over the requirement if the player attacked
-	more than one of the required mobs and then killed some of them after
-	completing the requirement.
-	* Fixed random item rewards for quests.
-	* Fixed job check for quest item rewards.
-
-2012-10-21  GoldenKevin  (revision 149)
-
-	* All beginner skills (except Monster Rider and Follow the Lead) are
-	functional, although Recovery does not display the HP recovered in big blue
-	numbers above the player's head.
-	* Got rid of custom time zone in TimeTool only. The value specified in the
-	properties files now apply for the entire Java process, so the logger dates
-	and times, the Rhino/JavaScript Date objects, MySQL Connector/J setDate
-	functions, and everything that used TimeTool before use a consistent
-	time zone. Note that any messages logged before the properties files are
-	successfully read will use the server's time zone.
-	* CenterServer allows custom time zone for message logging and MySQL
-	Connector/J purposes.
-
-2012-10-23  GoldenKevin  (revision 150)
-
-	* Arrow drops now drop a quantity in the range of 10-25 instead of just 1.
-	* Players in map are shown the raw damage a player has taken (i.e. before
-	Magic Guard subtracts HP damage).
-	* Skills Disorder and Threaten now inflict both their mob effects on mobs.
-
-2012-10-25  GoldenKevin  (revision 151)
-
-	* Corrected behavior of stacking items. Obtained items will always fill up
-	any unfilled slots of the same item before they start taking up empty slots.
-	* Fixed buying equips or enough items to fill up an entire slot (100 potions
-	for example).
-	* Fixed mob counting quests not incrementing properly if mobs are not killed
-	in one hit.
-	* Fixed quest completed notices repeatedly popping up for a quest even if
-	its requirements were already fulfilled before they were checked again.
-	* Maple TV NPCs no longer show the placeholder script for shop NPCs.
-	* Fixed NullPointerException for mob skills.
-	* Allow movement between The Forest East of Henesys and On the Way to the
-	Harbor.
-
-2012-10-26  GoldenKevin  (revision 152)
-
-	* Fixed scripted portals being silent when entered.
-	* Fixed broken second job advancement to crossbowmen and bandits.
-	* Added full support for Camila's Gem jump quest.
-
-2012-10-27  GoldenKevin  (revision 153)
-
-	* All NPC scripts account for a full inventory before giving any items.
-
-2012-10-27  GoldenKevin  (revision 154)
-
-	* Added NPCs and NPC stubs for NPCs in New Leaf City.
-	* Added persistent event for subway between New Leaf City and Kerning City,
-	and enabled it by default in game*.properties
-	* Fixed Kerning City ticket gate not taking basic tickets to New Leaf City.
-	* Fixed Kerning City ticket seller giving the wrong items.
-	* Ellinia Station ticket usher does not allow a player to visit Orbis unless
-	the ship_ossyria persistent event is enabled. The player is no longer
-	instantly warped there.
-
-2012-10-27  GoldenKevin  (revision 155)
-
-	* StatAllocationHandler now mutexes SP and AP allocation so concurrent
-	modifications by "megatubi" enabled clients don't cause issues.
-	* Fixed ticket gates for Kerning City and New Leaf City subways.
-	* Fixed Magic Guard not burning additional HP if MP is depleted.
-	* Added a stub to handling the Dispel skill (including a new method that is
-	application for other party skills).
-
-2012-10-29  GoldenKevin  (revision 156)
-
-	* Refactored `shopitems` table in default_shops.sql so the `shops` table is
-	no longer needed.
-	* Added shops for Nautilus.
-	* Removed some inaccurate shop items.
-	* Added bullets in applicable shops.
-	* Fixed portal to Utah's Pig Farm.
-	* Fixed NPC script for trash can in Nautilus.
-	* Fixed Speed Potions.
-
-2012-11-06  GoldenKevin  (revision 157)
-
-	* Don't print the stack trace of a network IO error that closed a session,
-	as it is meaningless and clutters the logs.
-
-2012-11-06  GoldenKevin  (revision 158)
-
-	* Fixed second job advancement scripts for warriors, magicians, bowmen, and
-	thieves and made them more consistent.
-	* Fixed any remaining race conditions for player quests by using a single
-	mutex over all quest-related structures in GameCharacter rather than
-	attempting to coordinate concurrent structures.
-	* Player stats lock moved to LoggedInPlayer because login server players are
-	immutable.
-
-2012-11-07  GoldenKevin  (revision 159)
-
-	* All commands rewritten to make use of a new argument parsing solution that
-	does away with argument counts and argument indices in favor of a iterator
-	interface.
-
-2012-11-07  GoldenKevin  (revision 160)
-
-	* Started work on experimental system that facilitates making commands apply
-	for characters other than the calling character. The !tp, !info, !skill,
-	!stat, and !give commands have been retrofitted to support this system.
-	Currently the system only works on players that are either offline or on the
-	same channel as the calling character.
-	* Added !map command to change map of other characters or to warp to a
-	specific spawn point in a map. When used with only one argument, it behaves
-	identically to the /m command.
-
-2012-11-09  GoldenKevin  (revision 161)
-
-	* Fixed compilation error in WorldChannel.
-	* CommandTarget.mutate accepts a List of properties to change rather than
-	a Map.
-	* !heal, !maxstats, !maxequips, and !maxall now support the command target
-	system.
-	* OfflineCharacterCommandTarget is now manually committed once after all
-	updates have been made, in order to speed up commands such as !maxall.
-
-2012-11-09  GoldenKevin  (revision 162)
-
-	* Fixed invisible throwing stars or arrows when attacking with a claw or
-	(cross) bow.
-	* Fixed denying buddy invites.
-
-2012-11-09  GoldenKevin  (revision 163)
-
-	* Started work on experimental system that facilitates the creation of
-	commands that could be called by a GM connecting over telnet.
-	* !town now supports the command target system.
-
-2012-11-10  GoldenKevin  (revision 164)
-
-	* Support for the newest Kvj format.
-	* Started work on supporting quest mob and reactor drops.
-	* Reverted changes to WorldChannel and made LocalChannelCommandTarget do
-	channel changes the right way.
-	* Started work on experiment system that will eventually supplant
-	InterChannelCommunication in a more object oriented and manageable manner.
-
-2012-11-10  GoldenKevin  (revision 165)
-
-	* Fixed TimeTool.intDateToCalendar.
-	* Added !ban command and support for adding infractions to users that are
-	offline.
-	* Reenabled infraction system, although false positions for auto ban should
-	be at a minimum now that I reduced points for machine detected packet
-	editing to 0.1% of the tolerance - still high enough to catch cheaters after
-	at most a few hours if they are abusing their hacks but low enough to allow
-	an average of 33 false positives a day for infractions that last 30 days.
-
-2012-11-10  GoldenKevin  (revision 166)
-
-	* Fixed thread unsafe methods in CrossServerCommunication.
-	* Replaced usages of Future in CrossProcessCrossChannelCommunication with
-	BlockingQueues. This allows early outs in blocking calls in
-	CrossServerCommunication when a desired value is found. Credits go to Markus
-	Fuchs' WeakValueHashMap as inspiration for the WeakValueMap nested class.
-	* Implemented replacement method for InterChannelCommunication's
-	getChannelOfPlayer in CrossServerCommunication.
-
-2012-11-10  GoldenKevin  (revision 167)
-
-	* Implemented CrossServerCommunication methods for relaying all kinds of
-	chats that go beyond a player's map.
-	* Logic for returnPlayerExistsResult should not be repeated for both
-	implementations of CrossChannelCommunication.
-	* CrossServerCommunication.scanChannelOfPlayer early outs for same process
-	channels that returned a result of true.
-
-2012-11-10  GoldenKevin  (revision 168)
-
-	* Early out checks in CrossServerCommunication methods similar to those in
-	scanChannelOfPlayer and sendWhisper now loop rather than check once. While
-	the existing code was sufficient for same process channels, this could also
-	halt any unnecessary packet sending if a response packet was received after
-	an earlier request.
-	* Fixed and improved error messages for timed out blocking
-	CrossServerCommunication calls.
-	* Implemented CrossServerCommunication methods for relaying buddy list
-	related operations.
-
-2012-11-11  GoldenKevin  (revision 169)
-
-	* Implemented CrossServerCommunication methods for sending party packets to
-	the center server.
-
-2012-11-11  GoldenKevin  (revision 170)
-
-	* Refactored InterServerPartyOps so it can also replace top level opcodes
-	between game and center servers for chatrooms with sub opcodes for "center
-	server synchronization" once InterChannelCommunication is replaced.
-	Refactored any instances of "party synchronization" to "center server
-	synchronization."
-	* Instances of "cross channel communication" refactored to "cross channel
-	synchronization."
-
-2012-11-11  GoldenKevin  (revision 171)
-
-	* Fixed CrossServerSynchronization.fillPartyList.
-	* Refactored remaining instances of "party synchronization" to "center
-	server synchronization."
-	* Added support for chatrooms in CrossServerSynchronization.
-
-2012-11-11  GoldenKevin  (revision 172)
-
-	* Dropped in CrossServerSynchronization to replace InterChannelCommunication
-	and replaced any references of the old class name. Also refactored several
-	methods so "interchannel" can no longer be found in any identifiers.
-	* Fixed logic errors for player scan, whisper, buddy invites, and chatroom
-	invites in CrossServerSynchronization.
-	* Fixed CrossServerSynchronization.initializeLocalChannels.
-	* Shortened the channel change response timeout to match cross channel
-	synchronization blocking call timeout.
-
-2012-11-11  GoldenKevin  (revision 173)
-
-	* Implemented CrossChannelCommandTarget.
-
-2012-11-12  GoldenKevin  (revision 174)
-
-	* Rearranged !ban command arguments so ban reason can have spaces.
-	* Rewrote !shutdown command to be more faithful to its inspiration.
-	* Fixed bugs in chatroom invite and closing.
-	* Split up receivedCenterServerSynchronziationPacket so each party operation
-	gets its own method in CenterServerSynchronization.
-	* Fixed error when deleting a buddy who has been invited but has not
-	accepted the invite yet.
-	* Prevent players from inviting as a buddy a player who has already invited
-	himself/herself.
-	* Players may re-add another player that they have deleted from their buddy
-	list who still has himself/herself on their buddy list.
-
-2012-11-14  GoldenKevin  (revision 175)
-
-	* !tp command now gives all warnings to players before the warp is
-	actually performed.
-	* Disambiguated the subjects in !tp command warnings.
-	* PartyList member order should now be consistent for each channel's copy of
-	a party.
-	* PartyList members can now be accessed by index.
-	* Fixed DefaultNpcShopDataLoader.loadAll().
-
-2012-11-15  GoldenKevin  (revision 176)
-
-	* Fixed mastery level for swords being too high if skill points were also
-	allocated to mastery skills for axes.
-	* Implemented party buffs. Dispel, resurrection, time leap party skills as
-	well as map buffs will be implemented soon.
-	* Refactored several identifiers in StatusEffectTools.
-
-2012-11-22  GoldenKevin  (revision 177)
-
-	* Implemented Dispel player skill.
-	* Implemented non-party AOE player buffs (Echo of Hero, GM Haste, GM Holy
-	Symbol, GM Bless, GM Hyper Body).
-	* Added stubs for remaining party/AOE player skills.
-	* More constants are added to MobSkills class to reduce number of magic
-	numbers in MobSkillEffectsData class.
-	* Corrected some code for weapon attack up, weapon defense up, magic attack
-	up, magic defense up, avoid up, and area of effect mob skills.
-	* Corrected some code for Taunt and Time Leap player skills.
-	* Fixed mob buffs expiring immediately.
-	* Re-casted mob skills now have the existing effects and cancel timer
-	canceled before the new effects and cancel timer are applied.
-
-2012-12-02  GoldenKevin  (revision 178)
-
-	* Implemented Heal + Dispel GM skill; Bishop and GM Resurrection skills; and
-	Time Leap, Threaten, Slow, Doom, Shadow Web, Ninja Ambush, Hero's Will, and
-	Pirate's Rage player skills.
-	* Added stubs for remaining specially handled buff skills.
-	* Fixed Silver Hawk and Golden Eagle stun.
-	* Fixed Seal, Coma, Shout, Charged Blow, Assaulter, Boomerang Step, Backspin
-	Blow, Double Uppercut, Demolition, Snatch, Barrage, Blank Shot, Ice Strike,
-	Blizzard (wizard), Ice Splitter, Paralyze, Poison Breath, Element
-	Composition (fire/poison), and Hypnotize.
-	* Added delay parameter for all status effect packets just for consistency
-	(although it doesn't really seem to delay anything).
-
-2012-12-02  GoldenKevin  (revision 179)
-
-	* Fixed mob's elemental resistance not being changed by Doom.
-	* Fixed duplicate ban entries in SQL.
-	* Fixed gained 0 exp messages.
-	* Fixed !shutdown command help text.
-	* Removed cheat detection in MovementHandler.handleMoveMob that banned
-	players who were attacked by auto-aggro monsters controlled by another
-	player in the map.
-	* Fixed selling items to shops causing inventory to go back to equip tab.
-	* Fixed race condition when allocating SP.
-
-2012-12-02  GoldenKevin  (revision 180)
-
-	* Fixed broken attacks when no skill is used and MP consume when summon
-	attacks something - reverted most of last revision's changes to
-	DealDamageHandler.
-	* Fixed changing master level of a skill while leaving the current level
-	of the skill zero.
-	* Fixed rogue.js NPC script.
-	* Fixed Mika - NLC grocer shop.
-	* Fixed ArrayIndexOutOfBoundsException when adding an item to the bottom
-	right slot in a trade window.
-	* Fixed weapon attack being buffed when a summon is spawned.
-
-2012-12-08  GoldenKevin  (revision 181)
-
-	* Players using the "Hide" skill can no longer be located using the /find
-	client command and any whispers to such players will return the error
-	message that the player could not be found.
-	* Kyrin now gives SP for the Pirate first job advancement.
-	* Implemented skill macros.
-	* Changed ban expiration calculation methods so the ban is lifted as soon
-	as the total infraction points dips below the tolerance level.
-	* Added !eventuil, !notice, and !ticker commands.
-	* !rate, !shutdown, and !who commands apply to the entire world rather than
-	just the current game server.
-	* Fixed NullPointerException when entering portals to maps not in the WZ
-	files.
-	* Fixed dropping equipped items not updating the avatar.
-
-2012-12-08  GoldenKevin  (revision 182)
-
-	* Fixed wrongful infractions and inability to start or complete quests with
-	the GM jobs even though these actions are allowed by a clean client.
-	* Implemented quests that change a skill level (i.e. fourth job skills
-	quests that don't actually hand out skillbooks).
-	* Implemented quest for gaining Ninja Ambush skill for Night Lords.
-	* Fixed quests that allow a user to choose their item reward.
-	* SQL procedures `updateranks` and `fetchranks` now skip accounts that are
-	IP banned.
-	* Fixed chair being displayed with players that were teleported while
-	sitting on a chair item.
-	* Added !clearinv command.
-	* Fixed extraneous rows in `inventoryitems` database table when using !give
-	on offline players.
-	* Fixed SQLException when logging into a MAC banned character.
-
-2012-12-14  GoldenKevin  (revision 183)
-
-	* The map used for the quest for gaining the Ninja Ambush skill now can be
-	exited.
-	* Fixed Speed Pill, Sharp Eyes, and Poison crashing other players in map.
-	* Fixed Sharp Eyes, Power Stance, and much more buff effects.
-	* Fixed Slow and Poison player debuff effects.
-	* Some pirate morph skills and morph items now work.
-	* Fixed magic attack being buffed when a summon is spawned.
-	* Any buff source (item or skill) that shares at least one of the same
-	effects as a buff that has just been casted will be canceled.
-	* Fixed false positive infractions when using Power Guard.
-
-2012-12-15  GoldenKevin  (revision 184)
-
-	* Refactored quest triggers in GameCharacter to reduce nesting and primitive
-	value (un)boxing. Removed redundant loop in itemCountChanged and fixed
-	missed call to completableQuests.remove(quest) in questStatusChanged.
-	* Refactored change quest status methods in GameCharacter to eliminate
-	instantiation and initialization (loop) of a temporary Map.
-	* A mob kill now advances the progress of a quest for everyone in the party.
-
-2013-01-05  GoldenKevin  (revision 185)
-
-	* Quests will not complete or start if players do not have enough inventory
-	space to receive an item.
-	* Quest start and completion refactoring - error messages are now given to
-	players.
-	* !give command gives an error if a nonexistent item is entered.
-	* Fixed "existent" typos.
-
-2013-01-06  GoldenKevin  (revision 186)
-
-	* Send level up packet to map when player's level is changed through !stat
-	command.
-	* Do not send job change or avatar change packets back to client that had
-	their job or avatar changed.
-	* `mapmemory` table now stores spawn points. GameCharacter methods and
-	script bindings updated accordingly.
-	* Added "free market" and "happyville" to list of warpable maps for the
-	!town command.
-	* Added !jail command.
-	* Accumulate infractions if a player tries replenishing HP without a pause
-	after flinching (attacking, getting hurt, or casting skills) or moving.
-
-2013-01-12  GoldenKevin  (revision 187)
-
-	* Removed !cpu debug command.
-	* Commands on offline characters only work on characters in the same world
-	as the caller character.
-	* Added "ariant" to list of warpable maps for the !town command.
-	* Omok pieces may not be laid on top of each other.
-	* Fixed each hit on a mob counting as a whole mob killed for quest purposes.
-	* Stubs for high damage auto ban.
-
-2013-01-12  GoldenKevin  (revision 188)
-
-	* Eliminated potential for race conditions when making events where only one
-	instance can be running at a time.
-	* Fixed portals/q2073.js allowing multiple players to enter the map.
-	* events/pigFarm.js now spawns players in the correct destination portal.
-	* Descriptions for portal scripts now list the portal name instead of the
-	script name.
-	* Eliminated unused portal scripts.
-	* NLC subway schedule shortened to six minutes.
-
-2013-01-13  GoldenKevin  (revision 189)
-
-	* Fixed White Knight charge buffs crashing other players in the map.
-	* Fixed White Knight Charged Blow not canceling charge buff according to
-	level of Paladin's Advanced Charged Blow skill.
-	* 0x63 and 0x5B are now no-op opcodes. They do not need to be handled but
-	they were taking up many lines on game server logs.
-	* Fixed Chakra and skills that go through BuffHandler but have a duration
-	of zero (e.g. Monster Magnet) crashing other players in the map.
-
-2013-01-13  GoldenKevin  (revision 190)
-
-	* All instances of Throwable are now caught in thread pool threads instead
-	of just instances of Exceptions.
-	* Scheduler class now catches uncaught Throwables.
-	* Replace branches with additions and remainder operations in miniroom code.
-	* Reduced usage of positionOf(GameCharacter) in Minigame.
-	* Match card winner is the player with more matches, not the one who flipped
-	the last pair.
-
-2013-01-14  GoldenKevin  (revision 191)
-
-	* Fixed NullPointerException when trying to delete a buddy who is offline
-	and has one of its account's other characters online.
-	* Fixed STATUS_MUTUAL not being set when accepting a buddy invite from a
-	character who is offline and has one its account's other characters online.
-	* Fixed NullPointerException being thrown in ClientSession.close and
-	RemoteCenterSession.close when an IOException is thrown while the init
-	packet is being sent.
-	* Fixed a portal script possibly executing multiple times in parallel for a
-	player if there is high latency. Fixed the cause of the Free Market exit
-	portal teleporting players back to the default map (Perion) if entry and
-	exit is repeated long enough (by holding the up arrow at a town's Free
-	Market portal, for example).
-	* Added "!eventutil admit" command and split the usage and help messages for
-	each subcommand of !eventutil.
-	* Added more no-op opcodes that were spamming game server logs.
-
-2013-01-15  GoldenKevin  (revision 192)
-
-	* Further improved performance of BuddyListHandler.processDeleteEntry, and
-	made the control flow more analogous to the processAcceptInvite method.
-	* Moved STATUS_* constants in BuddyListHandler to BuddyListEntry.
-	* Fixed ScriptPlayer.gainCashInventorySlots.
-	* Fixed trades breaking rechargeable stacks.
-	* Pressing the End Chat button after Mr. Goldstein takes mesos will no
-	longer prevent players from increasing their buddy list capacity.
-	* Fixed Athena Pierce not advancing archers to crossbowmen.
-
-2013-01-19  GoldenKevin  (revision 193)
-
-	* Fixed monster death summons (e.g. Transforming Jr. Yeti -> Yeti, Bombing
-	Fish House -> Gobies).
-	* Fixed inability to trade empty stacks of rechargeable items.
-	* Fixed mob WATK+ buff being too effective by 100%.
-	* Mobs spawn at random spawn points in the map that can accommodate more
-	spawn rather than at the most exhausted spawn points. This discourages
-	camping in one location.
-	* Respawn rate lowered to once every 15 seconds. Rate is lowered but max
-	spawn (abundancy) remains the same.
-
-2013-01-21  GoldenKevin  (revision 194)
-
-	* Added CommandCollection interface to facilitate adding commands from
-	class files (outside of CommandProcessor) that contain multiple command
-	definitions. CommandProcessor does not have to be aware of what specific
-	commands are contained in the individual CommandCollection implementations,
-	so CommandCollection implementations may now be extended without modifying
-	CommandProcessor.
-	* Fixed overflow in InventoryTools.getAmountOfItem. Now returns an int.
-	* Added !take command for taking an item from a player.
-	* Fixed bugs related to spawn points when exiting through the Free Market
-	portal to the default map, Perion, when the saved location data is missing.
-	* Allow warp to a map if the WZs for a portal have an invalid destination.
-	* Less sensitive fast HP/MP regeneration detection.
-	* Removed infraction triggers in AP and SP allocation because latency or
-	tubi enabled clients may fire them.
-	* Identified cause of Energy Charge effect showing in place of Dash.
-
-2013-01-26  GoldenKevin  (revision 195)
-
-	* Fixed QuestEntry.getData sometimes being out of order if the character
-	logged off or changed channels while completing the quest.
-	* Reduced amount of copying when committing and loading quest mob progress.
-	* Started work on refactoring interchannel party code to accommodate
-	interchannel guild code.
-	* Added a `guilds` table definition for database.
-	* Fixed Eurek and Vicious NPCs.
-	* A player warped to any map in the Free Market through the !map or !tp
-	commands now has his or her previous location saved.
-
-2013-01-28  GoldenKevin  (revision 196)
-
-	* CheatTracker now supports unmistakable hacking attempts, banning the user
-	after just two attempts. Some existing calls to CheatTracker.suspicious have
-	been retrofitted to use the correct option.
-	* Added packet editing checks for negative item quantities in selling and
-	buying items to NPC shops and in storing to storage keepers.
-	* KvjSkillDataLoader no longer repeats file IO operations for skills that do
-	not exist and SkillDataLoader immediately returns null when getting stats
-	for skillid 0. Solves potential bottleneck in DealDamageHandler.parseDamage.
-	* Removed unused instance variable in ScriptPartyMember.
-	* Started working on game server side of guild lists by having it share bits
-	of code with PartyList.
-	* Implemented guild NPC scripts and added stubs for necessary bindings that
-	cannot yet be implemented.
-	* Do not allow scripts to call npc.responseReceived. Make that method
-	protected and use a proxy class in the same package to indirectly call it.
-
-2013-01-30  GoldenKevin  (revision 197)
-
-	* Added infraction detection for attacking without a weapon.
-	* !take now removes empty stacks of rechargeable ammo.
-	* Glaze and Blaze Capsules are now treated as bullets and no longer Error 38
-	the client.
-	* Chatrooms integrated into IntraworldGroups.
-	* Started working on center server side of guilds by having it share bits
-	of code with Party.
-	* Moved PartyList specific elements in IntraworldGroupList to PartyList.
-	* Implemented more methods in GuildList.
-	* Implemented all guild packets from game server to client.
-	* Implemented guild creation.
-
-2013-02-02  GoldenKevin  (revision 198)
-
-	* Heracle now takes 1500000 mesos to create a guild.
-	* Prevent guild masters from deleting their characters.
-	* Save character guild membership to database and fetch guild data from
-	center server on character load.
-	* Implemented guild log in and log off notifications.
-	* Implemented guild invitations and guild joining.
-	* Reduced amount of game server to client packets when joining a party and
-	when logging into a character that is in a party.
-
-2013-02-04  GoldenKevin  (revision 199)
-
-	* Heracle now takes the proper amount of mesos to expand a guild and to
-	disband a guild.
-	* Fixed guild ranks being reset.
-	* Fixed guild invitations checking for party membership instead of guild.
-	* Fixed guild member log in/log off notifications.
-	* Properly initialized guild capacity for new guilds.
-	* Proper three default titles, and new guild members always start on the
-	correct rank.
-	* Players on the same map as someone who just joined a guild, someone in a
-	guild whose emblem was just changed, or someone who was just removed from a
-	guild will now see the updated guild line under the guild member's name.
-	* Guild contracts are now shown before guild is made.
-	* Implemented guild member level and job updates.
-	* Implemented guild title changes, rank changes, notice changes, leave, and
-	expel.
-	* Implemented guild expansion, emblem change, and disbandment.
-
-2013-02-04  GoldenKevin  (revision 200)
+2013-02-05  GoldenKevin  (revision 41)
 
 	* Updated copyright years.
+	* Added AGPLv3 license headers to shell/batch script files.
 
-2013-02-05  GoldenKevin  (revision 201)
+2013-03-06  GoldenKevin  (revision 42)
 
-	* Fixed chatroom auto-invite (double click name on user group list) and
-	occasional failed trade invite.
-	* Fixed guild disbandment not erasing guild from database.
-	* Fixed guild notice updates being rolled back when all guild members
-	disconnect.
-	* Fixed broken Guild.isFull and GuildList.isFull.
-	* Heracle will not take mesos unless the guild contract is accepted by
-	everyone.
-	* Fixed storage inventory rolling back if client is disconnected before the
-	NPC window is closed.
-	* Removed unnecessary parameter passing in scripts/npcs/party1_play.js.
-	* Fixed broken Trade.canFitAllItemsAndMesos by adapting code copied from
-	QuestRewards.awardItems.
+	* Added Typhon Feather to custom_drops.txt.
+	* Parse effectAfter field in kvjcompiler.mob.structure.Skill.
 
-2013-02-19  GoldenKevin  (revision 202)
+2013-03-13  GoldenKevin  (revision 43)
 
-	* QuestRewards.giveRewards only multiplies mesos by meso rate if the mesos
-	are given and not taken away.
-	* Fixed scripts/npcs/refine_nautillus.js.
-	* Fixed Shadow Shifter and Guardian crashing the map when activated.
-	* Fixed Ninja Ambush, Threaten, Slow, Seal, Doom, and Shadow Web crashing
-	the map when cast.
-	* Fixed Meso Guard not working.
+	* Fixed male only quest reward items being given to females too.
 
-2013-02-19  GoldenKevin  (revision 203)
+2013-08-03  GoldenKevin  (revision 44)
 
-	* Added support for blacklisting certain MAC addresses from being added to
-	the `macbans` table if the MAC address is likely to be duplicated on
-	multiple clients.
+	* Rewrite StringConverter as to reduce overhead. Compiled files total size
+	reduced up to 8.7%.
+	* Compile cash shop related files in Etc.wz.
 
-2013-02-27  GoldenKevin  (revision 204)
+2013-08-22  GoldenKevin  (revision 45)
 
-	* Fixed Chaos scrolls.
-	* Moved !jail, !unjail, and !ban commands from CommandProcessor into
-	DisciplinaryCommandHandlers.
-	* Added !kick command.
+	* Write pet life period and pet food fullness recover in Item.wz.
 
-2013-02-27  GoldenKevin  (revision 205)
+2013-08-22  GoldenKevin  (revision 46)
 
-	* Fixed mastery missing for magic skills if not equipped with wand or staff.
-	* Moved all monster elemental resistance and makeChanceResult logic for mob
-	status effects to MonsterStatusEffectTools.
-	* Fixed Poison Mist expiring immediately.
-	* Fixed one damage mob poison shown on client and no damage on server.
-	* Fixed Venomous Star and Venomous Stab.
+	* Fixed quest repeat interval not being written if it is zero.
 
-2013-03-03  GoldenKevin  (revision 206)
+2013-10-13  GoldenKevin  (revision 47)
 
-	* Patched packet editing negative mesos when trading or dropping.
-	* Patched packet editing quest rewards when starting or completing quest.
-	* Fixed QuestRewards.giveRewards giving completion rewards from Strange Dish
-	2 when starting Strange Dish 3.
-	* All Throwables (not just SQLExceptions) will be caught when auto-commit is
-	disabled, and Connection.rollback will be called whenever Connection.commit
-	failed or was not yet called so that pooled Connections will always be at a
-	clean state.
-	* Partially resolved issues that arise when
-	CrossServerSynchronization.sendPartyMemberLogOffNotifications,
-	CrossServerSynchronization.sendGuildMemberLogOffNotifications, and
-	CrossServerSynchronization.sendLeaveChatroom are called in
-	GameCharacter.prepareLogOff.
+	* Added Black Charm to custom_drops.txt.
 
-2013-03-06  GoldenKevin  (revision 207)
-
-	* Fixed wrong initial rank being assigned to new guild members.
-	* Fixed mobs casting too many skills.
-	* Fixed Wings skill crashing the map.
-	* Simplified MonsterStatusEffectTools handling of Poison Mist and Venom.
-	* Fixed Blizzard/Ice Charge not freezing monsters.
-	* Fixed Blind and Hamstring effects expiring almost immediately.
-	* Fixed boss monsters being freezable.
-
-2013-03-07  GoldenKevin  (revision 208)
-
-	* Implemented guild BBS.
-
-2013-03-10  GoldenKevin  (revision 209)
-
-	* Sacrifice and Dragon Roar behave exactly as expected.
-	* Do not continuously lose EXP when losing HP (e.g. HP decreasing regions
-	such as El Nath or Aqua Road) while already dead.
-	* Prevent potion or skill use while player is dead.
-	* Added !queststatus command.
-
-2013-03-13  GoldenKevin  (revision 210)
-
-	* Fixed Combo Attack, Panic, and Coma.
-	* Fixed characters being unable to do certain activities after dropping
-	mesos.
-
-2013-04-08  GoldenKevin  (revision 211)
-
-	* Selling nonexistent items now counts as only POSSIBLE_PACKET_EDITING
-	rather than CERTAIN_PACKET_EDITING due to false positives.
-	* Fixed Puppet skill state being transferred by PlayerContinuation when
-	changing channels.
-	* Started implementing Mystic Door. Only works properly when Priest is not
-	in a party.
-	* Optimized party HP pushing/pulling when logging into a character that is
-	in a party and when joining a party.
-
-2013-07-21  GoldenKevin  (revision 212)
-
-	* Fully implemented Mystic Door for players not in a party.
-	* Implemented fully functional Mystic Door for parties, with visual glitches
-	(i.e. doors in towns are duplicated and misplaced and warp players to a
-	wrong location in the map that the skill was cast in).
-
-2013-07-21  GoldenKevin  (revision 213)
-
-	* Fixed wrong initial position when player changes maps by entering a
-	portal, causing them to appear to fly across the map to players in the
-	destination map.
-	* Fixed all issues with duplicate Mystic Doors, wrong warp positions when
-	using a door, and wrong placement of Mystic Doors in towns.
-	* Fixed leader's name not appearing above preexisting Mystic Door in a town
-	when creating a new party.
-	* Added missing locks in MysticDoor.open and MysticDoor.close.
-
-2013-07-23  GoldenKevin  (revision 214)
-
-	* Cleaned up comments for Mystic Doors.
-	* Fixed Alchemist.
-
-2013-07-28  GoldenKevin  (revision 215)
-
-	* Abstracted and refactored some game server specific code to prepare for a
-	shop server implementation.
-	* Fixed partner rings serialization in CommonPackets.writeCharData.
-	* Fixed ShopCharacter.loadPlayer.
-
-2013-07-28  GoldenKevin  (revision 216)
-
-	* Display an error message in the chat when channel change or shop entry
-	fails.
-	* Set up communication infrastructure for shop server.
-	* Game server supports migrating player to the shop server.
-	* Implemented the necessary channel scan, chatroom, buddy notifications,
-	party notifications, and guild notifications functionality between game and
-	shop server.
-	* Partially implemented ShopHandler so that a player connecting to the
-	server will at least see the cash shop interface.
-
-2013-07-28  GoldenKevin  (revision 217)
-
-	* Added news ticker message functionality to shop server.
-	* Implemented shop server packets for cash shop balance, wishlist, max
-	characters, storage inventory capacity, cash shop inventory, and gift
-	inventory.
-
-2013-07-28  GoldenKevin  (revision 218)
-
-	* Implemented exit button in cash shop.
-
-2013-08-03  GoldenKevin  (revision 219)
-
-	* Support for the newest Kvj format.
-	* Fix improper package interpretation of "storage slots" in shop server.
-	* Load commodities and cash packages from SQL or Kvj in shop server.
-
-2013-08-05  GoldenKevin  (revision 220)
-
-	* Preserve unique ID of InventorySlots. Stacks of cash items that were not
-	created at the same time through purchase, drop pickup, or !give command
-	cannot be broken or consolidated.
-	* Unique ID moved from `inventoryitems` table to new `cashshoppurchases`
-	table that also holds other cash shop purchase information. `uniqueid` table
-	is no longer needed and has been removed.
-	* Merged UniqueIdGenerator with InventoryTools.
-
-2013-08-07  GoldenKevin  (revision 221)
-
-	* CashShopStaging is now an implementation of IInventory rather than an
-	extension of Inventory because it has no concept of slot positions.
-	* Implemented ShopCharacter persistence. State is committed whenever the
-	save character packet is received and when the player exits the shop.
-	* Use AtomicIntegers for keeping track of cash because volatile array
-	elements are a pain to implement.
-	* Implemented buying of items from cash shop and transferring cash items to
-	and from staging. Added code stubs for more cash shop operations.
-
-2013-08-08  GoldenKevin  (revision 222)
-
-	* Players get their buddy list updated if a buddy in the cash shop exits the
-	shop without returning to a channel, e.g. by crashing or hitting Alt-F4.
-	* Buddy discovery now works for players in the cash shop. Logging into a
-	character with a buddy in the cash shop will show that buddy as in the cash
-	shop as opposed to offline.
-	* Display all queued buddy invites when a player leaves the cash shop in
-	case another player sent an invite while the recipient was in the shop and
-	unable to respond.
-	* Fixed whisper and /find command reporting that offline players are in the
-	cash shop.
-
-2013-08-09  GoldenKevin  (revision 223)
-
-	* Implemented cash item gifting in the cash shop.
-	* Cleaned up cash shop packets.
-
-2013-08-10  GoldenKevin  (revision 224)
-
-	* Fixed expiration date overflow when buying from the cash shop.
-	* Downgraded incorrectly assigned CERTAIN_PACKET_EDITING infractions to
-	POSSIBLE_PACKET_EDITING in cash shop handling.
-	* Send error messages to players when they get an infraction to help with
-	debugging wrongful cheat tracker checks.
-	* Implemented wish list changes.
-	* Implemented inventory expansion from the cash shop.
-
-2013-08-10  GoldenKevin  (revision 225)
-
-	* Implemented coupon codes in cash shop.
-
-2013-08-10  GoldenKevin  (revision 226)
-
-	* Enable actions after player clicks Check Cash button in cash shop.
-	* Implemented buy character slots in cash shop.
-	* Corrected cash shop error message packets.
-
-2013-08-11  GoldenKevin  (revision 227)
-
-	* Do not take cash unless the staging inventory has room.
-	* Fixed all packets for couple and friendship rings.
-	* Implemented buy couple and friendship rings in cash shop.
-
-2013-08-11  GoldenKevin  (revision 228)
-
-	* Implemented SN blocking system in cash shop. Initialized to block stock of
-	Safety Charms and Venus Fireworks that should not be on sale.
-	* Formatted some of the unknown bytes used in EnterShopHandler.writeEnterCs
-	to make the packet structure a bit clearer.
-
-2013-08-13  GoldenKevin  (revision 229)
-
-	* Implemented Best Item list in cash shop.
-	* Implemented custom commodity overrides in cash shop.
-	* Implemented limited quantity commodities in cash shop.
-
-2013-08-13  GoldenKevin  (revision 230)
-
-	* Removed test lines from cashshopblockedserialnumbers.txt,
-	cashshopcommodityoverrides.txt, and cashshoplimitedcommodities.txt.
-	* Fixed error 38 when writing cash shop error ERROR_OUT_OF_STOCK.
-	* Implemented buying items with mesos in cash shop.
-
-2013-08-13  GoldenKevin  (revision 231)
-
-	* Check recipient name when sending gifts.
-	* Gift recipients logged into the cash shop will see newly received gifts in
-	their staging.
-	* Implement buying and gifting packages.
-
-2013-08-16  GoldenKevin  (revision 232)
-
-	* Fixed expire dates of pets bought in the cash shop.
-	* Commodity overrides now override commodities server side as well.
-	* Implemented expire cash items in cash shop. Implemented expire cash items
-	and expirable quest items in a channel.
-
-2013-08-16  GoldenKevin  (revision 233)
-
-	* Cancel item expire task in ShopCharacter and GameCharacter on disconnect
-	to prevent memory leaks and to tidy up the scheduler queue.
-	* Fixed cooldown persistence and canceling in ShopCharacter. Removed
-	unneeded packet for players in shop server.
-
-2013-08-17  GoldenKevin  (revision 234)
-
-	* Fixed pet expiration packets.
-	* Removed unneeded column in `inventorypets` table.
-	* Spawn and remove pets by double clicking the inventory item.
-
-2013-08-17  GoldenKevin  (revision 235)
-
-	* Fixed first item on expire queue not being expired.
-
-2013-08-18  GoldenKevin  (revision 236)
-
-	* Fixed crash when dropping spawned pets.
-	* Fixed pets not appearing when changing maps.
-	* Implemented pet movement map packets.
-	* Implemented Meso Magnet and Item Pouch.
-	* Implemented pet auto potion.
-
-2013-08-18  GoldenKevin  (revision 237)
-
-	* Implemented packets for pet auto potion.
-	* Implemented pet loot item ignore.
-
-2013-08-22  GoldenKevin  (revision 238)
-
-	* Use early out for-loops when iterating over enabled pets.
-	* Implemented pet fullness schedule.
-	* Implemented pet food.
-	* Implemented pet commands.
-
-2013-08-22  GoldenKevin  (revision 239)
-
-	* Support for the newest Kvj format.
-	* Load pet life period and pet food fullness recover from Kvj.
-
-2013-08-22  GoldenKevin  (revision 240)
-
-	* Fixed repeatable quests not starting.
-	* Implemented NPC script for Icebyrd Slimm.
-	* Implemented pet evolution.
-	* Implemented pet revive.
-
-2013-08-22  GoldenKevin  (revision 241)
-
-	* Implemented pet quote ring.
-	* Implemented pet special food and pet name tag.
-
-2013-10-11  GoldenKevin  (revision 242)
-
-	* Implemented remaining NPC scripts in Orbis.
-	* Implemented ScriptPlayer.gainCloseness.
-	* Enabled ship_ossyria and crane persistent events by default.
-
-2013-10-13  GoldenKevin  (revision 243)
-
-	* Implemented remaining NPC scripts in El Nath.
-	* Implemented third job advancement challenges.
-
-	* Started implementing infrastructure for hired merchants.
-
-Copyright 2011-2013 GoldenKevin
+Copyright 2010-2013 GoldenKevin
 Copying and distribution of this file, with or without modification, are
 permitted provided the copyright notice and this notice are preserved.

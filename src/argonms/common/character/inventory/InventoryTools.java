@@ -701,7 +701,7 @@ public final class InventoryTools {
 					equip.setMp((short) (equip.getMp() + add[StatEffect.MMP]));
 					equip.setWatk((short) (equip.getWatk() + add[StatEffect.PAD]));
 					equip.setMatk((short) (equip.getMatk() + add[StatEffect.MAD]));
-					equip.setWdef((short) (equip.getWdef() + add[StatEffect.PDD]));
+					equip.setWdef((short) (equip.getWdef() + (add[StatEffect.PDD])));
 					equip.setMdef((short) (equip.getMdef() + add[StatEffect.MDD]));
 					equip.setAcc((short) (equip.getAcc() + add[StatEffect.ACC]));
 					equip.setAvoid((short) (equip.getAvoid() + add[StatEffect.EVA]));

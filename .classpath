@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="dist/bcprov-jdk15.jar"/>
+	<classpathentry kind="lib" path="dist/js.jar"/>
+	<classpathentry kind="lib" path="dist/mysql-connector-java-bin.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

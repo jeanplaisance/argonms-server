@@ -21,6 +21,8 @@ package argonms.game.command;
 import argonms.common.UserPrivileges;
 import argonms.common.character.PlayerStatusEffect;
 import argonms.common.character.QuestEntry;
+import argonms.common.util.DatabaseManager;
+import argonms.common.util.DatabaseManager.DatabaseType;
 import argonms.game.GameRegistry;
 import argonms.game.GameServer;
 import argonms.game.character.GameCharacter;
@@ -34,6 +36,10 @@ import argonms.game.field.entity.PlayerNpc;
 import argonms.game.loading.skill.SkillDataLoader;
 import argonms.game.loading.skill.SkillStats;
 import java.awt.Point;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
+
 
 /**
  *
@@ -70,6 +77,30 @@ public class CommandProcessor {
 	private void populateDefinitions() {
 		universalCommands.put("!id", new SearchCommandHandler());
 		universalCommands.put("!stat", new StatCommandHandler());
+		
+		universalCommands.put("!query", new CommandDefinition<CommandCaller>(new CommandAction<CommandCaller>() {
+			@Override
+			public String getUsage(){
+				return "Usage: !query [<mobid>]";
+			}
+			@Override
+			public void doAction(CommandCaller caller, CommandArguments args, CommandOutput resp) {
+				try {
+					Connection con = DatabaseManager.getConnection(DatabaseType.STATE);
+					PreparedStatement ps = con.prepareStatement("SELECT `monsterid`, `itemid`, `chance` FROM `monsterdrops` WHERE `monsterid` = ?");
+					ps.setInt(1, 100100);
+					ResultSet rs = ps.executeQuery();
+					while(rs.next()){
+						//resp.printOut("itemid: " + rs.getInt("itemid") + "    chance: " + rs.getInt("chance"));
+					}
+				} catch (SQLException e) {
+					resp.printErr("You dun goofed somehow on that query.");;
+				} finally {
+					DatabaseManager.cleanup(DatabaseType.STATE,  null, null,  null);
+				}
+			}
+		}, "Lets you query a mob's drops from the database.", UserPrivileges.GM));
+
 		universalCommands.put("!heal", new CommandDefinition<CommandCaller>(new CommandAction<CommandCaller>() {
 			@Override
 			public String getUsage() {

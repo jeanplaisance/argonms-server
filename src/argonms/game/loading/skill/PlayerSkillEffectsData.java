@@ -34,6 +34,7 @@ import java.util.Set;
  * @author GoldenKevin
  */
 public class PlayerSkillEffectsData extends BuffsData implements MonsterStatusEffectsData {
+	private int skillId;
 	private final byte level;
 	private short mpCon;
 	private short hpCon;
@@ -60,6 +61,7 @@ public class PlayerSkillEffectsData extends BuffsData implements MonsterStatusEf
 
 	protected PlayerSkillEffectsData(int skillid, byte level) {
 		super(skillid);
+		this.setSkillId(skillid);
 		this.level = level;
 		this.prop = 100;
 		this.damage = 100;
@@ -544,5 +546,13 @@ public class PlayerSkillEffectsData extends BuffsData implements MonsterStatusEf
 	@Override
 	public byte getLevel() {
 		return level;
+	}
+
+	public int getSkillId() {
+		return skillId;
+	}
+
+	public void setSkillId(int skillId) {
+		this.skillId = skillId;
 	}
 }

@@ -156,17 +156,20 @@ public class Mob extends AbstractEntity {
 		int dropMesos = stats.getMesosToDrop();
 		if (dropMesos != 0){
 			combined.add(new ItemDrop(dropMesos));
-			combined = getAdditionalMesoDrops(combined, dropMesos, 150000);
+			combined = getAdditionalMesoDrops(combined, dropMesos, 120000, 1);
 		}
 		Collections.shuffle(combined);
 		return combined;
 	}
 
-	private List<ItemDrop> getAdditionalMesoDrops(List<ItemDrop> combined, int dropMesos, int probability){
+	private List<ItemDrop> getAdditionalMesoDrops(List<ItemDrop> combined, int dropMesos, int probability, int bonus){
+		if(bonus == 32)
+			return combined;
 		Random generator = Rng.getGenerator();
 		if (generator.nextInt(1000000) < probability) {
-			combined.add(new ItemDrop((int)(dropMesos * (100 + generator.nextInt(20) - 10)/100)));
-			return getAdditionalMesoDrops(combined, dropMesos, (int)(probability*0.85));
+			for(int i = 0; i<bonus; i++)
+				combined.add(new ItemDrop((int)(dropMesos * (100 + generator.nextInt(30) - 10)/100)));
+			return getAdditionalMesoDrops(combined, dropMesos, (int)(probability*0.12), bonus*2);
 		} else {
 			return combined;
 		}

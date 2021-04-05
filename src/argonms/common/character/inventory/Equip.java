@@ -32,7 +32,7 @@ public class Equip extends InventorySlot implements Cloneable {
 		AXE1H(4.4),
 		SWORD1H(4.0),
 		BLUNT1H(4.4),
-		AXE2H(25.8), //Swing = 4.8, Stab = 3.4
+		AXE2H(4.8), //Swing = 4.8, Stab = 3.4
 		SWORD2H(4.6),
 		BLUNT2H(4.8), //Swing = 4.8, Stab = 3.4
 		POLE_ARM(5.0), //Swing = 5.0, Stab = 3.0

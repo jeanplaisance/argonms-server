@@ -137,7 +137,7 @@ public class KvjMobDataLoader extends MobDataLoader {
 			db = true;
 			rs.beforeFirst();
 			while(rs.next()){
-				stats.addItemDrop(rs.getInt("itemid"), rs.getInt("chance"), (short) rs.getInt("min_amount"), (short) rs.getInt("max_amount"));
+				stats.addItemDrop(rs.getInt("itemid"),  1000000 / rs.getInt("chance"), (short) rs.getInt("min_amount"), (short) rs.getInt("max_amount"));
 			}
 		}
 		//InputStream is = new BufferedInputStream(new FileInputStream(prefFolder.getAbsolutePath() + File.separatorChar + kvj));
@@ -219,7 +219,7 @@ public class KvjMobDataLoader extends MobDataLoader {
 						int itemid = reader.readInt();
 						int chance = reader.readInt();
 						//Breaks if the database has already populated drops for this mob, indicated by a non-zero rs row. It needs to read first, however, to advance the stream.
-						if(db){ break; }
+						if(db){ continue; }
 						if (InventoryTools.isArrowForBow(itemid) || InventoryTools.isArrowForCrossBow(itemid))
 							stats.addItemDrop(itemid, chance, (short) 10, (short) 25);
 						else

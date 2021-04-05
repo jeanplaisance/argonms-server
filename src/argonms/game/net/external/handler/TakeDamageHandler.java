@@ -57,6 +57,7 @@ public final class TakeDamageHandler {
 		byte attack = packet.readByte();
 		/*byte elem = */packet.readByte();
 		int damage = packet.readInt();
+		System.out.println("Take damage: " + damage);
 		if (damage != 0)
 			CheatTracker.get(gc).logTime("hpr", System.currentTimeMillis() + 5000);
 
